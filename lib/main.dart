@@ -1,11 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'screens/welcome_screen.dart';
 import 'screens/login_screen.dart';
-import 'screens/home_screen.dart';
-import 'screens/profile_screen.dart';
-import 'screens/service_screen.dart';
-import 'screens/news_screen.dart';
+import 'screens/User/user_home_screen.dart';
+import 'screens/User/user_profile_screen.dart';
+import 'screens/User/user_service_screen.dart'; // ← Sử dụng UserServiceScreen mới
+import 'screens/User/user_news_screen.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp();
   runApp(const MainApp());
 }
 
@@ -20,7 +24,7 @@ class MainApp extends StatelessWidget {
         primarySwatch: Colors.red,
         scaffoldBackgroundColor: Colors.white,
       ),
-      home: const LoginScreen(),
+      home: const WelcomeScreen(),
     );
   }
 }
@@ -37,7 +41,7 @@ class _MainPageState extends State<MainPage> {
 
   final List<Widget> _screens = [
     const HomeScreen(),
-    const ServiceScreen(),
+    const UserServiceScreen(), // ← Sử dụng UserServiceScreen mới!
     const NewsScreen(),
     const ProfileScreen(),
   ];

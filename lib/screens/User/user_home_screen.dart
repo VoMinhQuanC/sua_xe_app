@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import '../widgets/service_card.dart';
+import '../../widgets/service_card.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});

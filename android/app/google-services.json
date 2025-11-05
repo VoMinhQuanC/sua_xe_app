@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "603583123085",
+    "project_id": "suaxe-web-73744",
+    "storage_bucket": "suaxe-web-73744.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:603583123085:android:19b182b24b926e41f55cc4",
+        "android_client_info": {
+          "package_name": "com.example.suaxe_app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "603583123085-bmjamkn87vmeo5h9ks3om98pddl1mgaj.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.suaxe_app",
+            "certificate_hash": "7d4b7c8eec6432187e8e4e4257472377068d81c3"
+          }
+        },
+        {
+          "client_id": "603583123085-42dla18q6fj48fdca9o7t2r38lc83e7j.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAIldcYWbhFo4qYe2f8zMIF4zAitIgVVdQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "603583123085-42dla18q6fj48fdca9o7t2r38lc83e7j.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

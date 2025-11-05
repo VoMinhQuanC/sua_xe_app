@@ -1,0 +1,80 @@
+import 'package:dio/dio.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+
+class ApiService {
+  final Dio _dio;
+  final FlutterSecureStorage _storage = const FlutterSecureStorage();
+
+  /// Thay giá trị này bằng URL API đã deploy của bạn (ví dụ https://PROJECT_ID.uc.r.appspot.com)
+  static const String baseUrl = 'https://suaxe-api.as.r.appspot.com'; // <-- chỉnh lại
+
+  ApiService._internal(this._dio);
+
+  factory ApiService() {
+    final dio = Dio(BaseOptions(
+      baseUrl: baseUrl,
+      connectTimeout: const Duration(seconds: 10),
+      receiveTimeout: const Duration(seconds: 10),
+      headers: {'Content-Type': 'application/json'},
+    ));
+
+    final service = ApiService._internal(dio);
+
+    // Interceptor: đính kèm token nếu có
+    dio.interceptors.add(InterceptorsWrapper(onRequest: (options, handler) async {
+      try {
+        final token = await service._storage.read(key: 'access_token');
+        if (token != null && token.isNotEmpty) {
+          options.headers['Authorization'] = 'Bearer $token';
+        }
+      } catch (_) {}
+      return handler.next(options);
+    }));
+
+    // Log interceptor (giúp debug)
+    dio.interceptors.add(LogInterceptor(requestBody: true, responseBody: true));
+
+    return service;
+  }
+
+  Future<Response> login(String email, String password) async {
+    return _dio.post(
+      '/api/auth/login',
+      data: {
+        'email': email,
+        'password': password,
+      },
+    );
+  }
+
+  Future<Response> firebaseAuth(String idToken) async {
+    return _dio.post('/api/auth/firebase', data: {
+      'idToken': idToken,
+    });
+  }
+
+  Future<void> saveToken(String token) async {
+    await _storage.write(key: 'access_token', value: token);
+  }
+
+  Future<void> clearToken() async {
+    await _storage.delete(key: 'access_token');
+  }
+
+  Future<Response> getServices() async {
+    return _dio.get('/api/services');
+  }
+
+  Future<Response> getProfile() async {
+    return _dio.get('/api/users/profile');
+  }   
+
+  // ============================================
+  // THÊM METHOD MỚI ĐỂ SỬA LỖI
+  // ============================================
+  
+  /// Lấy chi tiết dịch vụ theo ID
+  Future<Response> getServiceById(int serviceId) async {
+    return _dio.get('/api/services/$serviceId');
+  }
+}
