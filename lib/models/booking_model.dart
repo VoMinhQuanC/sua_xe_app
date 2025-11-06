@@ -1,177 +1,256 @@
-// lib/models/booking_model.dart
+class BookingModel {
+  final int? appointmentId;
+  final int? userId;
+  final int? vehicleId;
+  final DateTime appointmentDate;
+  final String status;
+  final String? notes;
+  final int? mechanicId;
+  final int? serviceDuration;
+  final DateTime? estimatedEndTime;
+  final bool isDeleted;
+  
+  // Thông tin bổ sung từ JOIN
+  final String? fullName;
+  final String? email;
+  final String? phoneNumber;
+  final String? licensePlate;
+  final String? brand;
+  final String? model;
+  final int? year;
+  final String? mechanicName;
+  final String? services; // Danh sách dịch vụ cách nhau bởi dấu phẩy
+  
+  // Danh sách chi tiết dịch vụ
+  final List<BookingServiceDetail>? serviceDetails;
 
-/// Booking Status
-enum BookingStatus {
-  pending,
-  confirmed,
-  inProgress,
-  completed,
-  cancelled;
+  BookingModel({
+    this.appointmentId,
+    this.userId,
+    this.vehicleId,
+    required this.appointmentDate,
+    required this.status,
+    this.notes,
+    this.mechanicId,
+    this.serviceDuration,
+    this.estimatedEndTime,
+    this.isDeleted = false,
+    this.fullName,
+    this.email,
+    this.phoneNumber,
+    this.licensePlate,
+    this.brand,
+    this.model,
+    this.year,
+    this.mechanicName,
+    this.services,
+    this.serviceDetails,
+  });
 
-  String get displayName {
-    switch (this) {
-      case BookingStatus.pending:
+  factory BookingModel.fromJson(Map<String, dynamic> json) {
+    return BookingModel(
+      appointmentId: json['AppointmentID'] ?? json['appointmentId'],
+      userId: json['UserID'] ?? json['userId'],
+      vehicleId: json['VehicleID'] ?? json['vehicleId'],
+      appointmentDate: DateTime.parse(json['AppointmentDate'] ?? json['appointmentDate']),
+      status: json['Status'] ?? json['status'] ?? 'Pending',
+      notes: json['Notes'] ?? json['notes'],
+      mechanicId: json['MechanicID'] ?? json['mechanicId'],
+      serviceDuration: json['ServiceDuration'] ?? json['serviceDuration'],
+      estimatedEndTime: json['EstimatedEndTime'] != null 
+          ? DateTime.parse(json['EstimatedEndTime']) 
+          : json['estimatedEndTime'] != null 
+              ? DateTime.parse(json['estimatedEndTime'])
+              : null,
+      isDeleted: json['IsDeleted'] == 1 || json['isDeleted'] == true,
+      fullName: json['FullName'] ?? json['fullName'],
+      email: json['Email'] ?? json['email'],
+      phoneNumber: json['PhoneNumber'] ?? json['phoneNumber'],
+      licensePlate: json['LicensePlate'] ?? json['licensePlate'],
+      brand: json['Brand'] ?? json['brand'],
+      model: json['Model'] ?? json['model'],
+      year: json['Year'] ?? json['year'],
+      mechanicName: json['MechanicName'] ?? json['mechanicName'],
+      services: json['Services'] ?? json['services'],
+      serviceDetails: json['serviceDetails'] != null
+          ? (json['serviceDetails'] as List)
+              .map((e) => BookingServiceDetail.fromJson(e))
+              .toList()
+          : null,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'AppointmentID': appointmentId,
+      'UserID': userId,
+      'VehicleID': vehicleId,
+      'AppointmentDate': appointmentDate.toIso8601String(),
+      'Status': status,
+      'Notes': notes,
+      'MechanicID': mechanicId,
+      'ServiceDuration': serviceDuration,
+      'EstimatedEndTime': estimatedEndTime?.toIso8601String(),
+      'IsDeleted': isDeleted ? 1 : 0,
+    };
+  }
+
+  // Helper để lấy trạng thái tiếng Việt
+  String get statusInVietnamese {
+    switch (status) {
+      case 'Pending':
         return 'Chờ xác nhận';
-      case BookingStatus.confirmed:
+      case 'Confirmed':
         return 'Đã xác nhận';
-      case BookingStatus.inProgress:
+      case 'In Progress':
         return 'Đang thực hiện';
-      case BookingStatus.completed:
+      case 'Completed':
         return 'Hoàn thành';
-      case BookingStatus.cancelled:
+      case 'Cancelled':
         return 'Đã hủy';
+      default:
+        return status;
     }
   }
 
-  static BookingStatus fromString(String status) {
-    switch (status.toLowerCase()) {
-      case 'pending':
-        return BookingStatus.pending;
-      case 'confirmed':
-        return BookingStatus.confirmed;
-      case 'in_progress':
-      case 'inprogress':
-        return BookingStatus.inProgress;
-      case 'completed':
-        return BookingStatus.completed;
-      case 'cancelled':
-        return BookingStatus.cancelled;
+  // Helper để lấy màu trạng thái
+  String get statusColor {
+    switch (status) {
+      case 'Pending':
+        return '#FFA500'; // Orange
+      case 'Confirmed':
+        return '#4CAF50'; // Green
+      case 'In Progress':
+        return '#2196F3'; // Blue
+      case 'Completed':
+        return '#00BCD4'; // Cyan
+      case 'Cancelled':
+        return '#F44336'; // Red
       default:
-        return BookingStatus.pending;
+        return '#9E9E9E'; // Grey
     }
   }
 }
 
-/// Booking Model
-class BookingModel {
-  final int? bookingId;
-  final int userId;
+class BookingServiceDetail {
+  final int? appointmentServiceId;
+  final int? appointmentId;
   final int serviceId;
-  final int? mechanicId;
-  final DateTime bookingDate;
-  final String? notes;
-  final BookingStatus status;
-  final double? totalPrice;
-  final DateTime? createdAt;
-  final DateTime? updatedAt;
-
-  // Relations
-  final String? userName;
+  final int quantity;
   final String? serviceName;
-  final String? mechanicName;
+  final double? price;
+  final int? estimatedTime;
 
-  BookingModel({
-    this.bookingId,
-    required this.userId,
+  BookingServiceDetail({
+    this.appointmentServiceId,
+    this.appointmentId,
     required this.serviceId,
-    this.mechanicId,
-    required this.bookingDate,
-    this.notes,
-    this.status = BookingStatus.pending,
-    this.totalPrice,
-    this.createdAt,
-    this.updatedAt,
-    this.userName,
+    this.quantity = 1,
     this.serviceName,
-    this.mechanicName,
+    this.price,
+    this.estimatedTime,
   });
 
-  /// From JSON
-  factory BookingModel.fromJson(Map<String, dynamic> json) {
-    return BookingModel(
-      bookingId: json['BookingId'],
-      userId: json['UserId'],
-      serviceId: json['ServiceId'],
-      mechanicId: json['MechanicId'],
-      bookingDate: DateTime.parse(json['BookingDate']),
-      notes: json['Notes'],
-      status: BookingStatus.fromString(json['Status'] ?? 'pending'),
-      totalPrice: json['TotalPrice']?.toDouble(),
-      createdAt: json['CreatedAt'] != null 
-          ? DateTime.parse(json['CreatedAt']) 
-          : null,
-      updatedAt: json['UpdatedAt'] != null 
-          ? DateTime.parse(json['UpdatedAt']) 
-          : null,
-      userName: json['UserName'],
-      serviceName: json['ServiceName'],
-      mechanicName: json['MechanicName'],
+  factory BookingServiceDetail.fromJson(Map<String, dynamic> json) {
+    return BookingServiceDetail(
+      appointmentServiceId: json['AppointmentServiceID'] ?? json['appointmentServiceId'],
+      appointmentId: json['AppointmentID'] ?? json['appointmentId'],
+      serviceId: json['ServiceID'] ?? json['serviceId'],
+      quantity: json['Quantity'] ?? json['quantity'] ?? 1,
+      serviceName: json['ServiceName'] ?? json['serviceName'],
+      price: json['Price'] != null ? double.parse(json['Price'].toString()) : null,
+      estimatedTime: json['EstimatedTime'] ?? json['estimatedTime'],
     );
   }
 
-  /// To JSON
   Map<String, dynamic> toJson() {
     return {
-      'BookingId': bookingId,
-      'UserId': userId,
-      'ServiceId': serviceId,
-      'MechanicId': mechanicId,
-      'BookingDate': bookingDate.toIso8601String(),
-      'Notes': notes,
-      'Status': status.name,
-      'TotalPrice': totalPrice,
-      'CreatedAt': createdAt?.toIso8601String(),
-      'UpdatedAt': updatedAt?.toIso8601String(),
+      'AppointmentServiceID': appointmentServiceId,
+      'AppointmentID': appointmentId,
+      'ServiceID': serviceId,
+      'Quantity': quantity,
     };
   }
 
-  /// Format giá
-  String get formattedPrice {
-    if (totalPrice == null) return '0 ₫';
-    return '${totalPrice!.toStringAsFixed(0).replaceAllMapped(
-          RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
-          (Match m) => '${m[1]},',
-        )} ₫';
-  }
+  double get totalPrice => (price ?? 0) * quantity;
+}
 
-  /// Format ngày giờ
-  String get formattedDate {
-    return '${bookingDate.day}/${bookingDate.month}/${bookingDate.year}';
-  }
+class CreateBookingRequest {
+  final int userId;
+  final int? vehicleId;
+  final String? licensePlate;
+  final String? brand;
+  final String? model;
+  final int? year;
+  final DateTime appointmentDate;
+  final String? notes;
+  final List<int> serviceIds;
 
-  String get formattedTime {
-    return '${bookingDate.hour.toString().padLeft(2, '0')}:${bookingDate.minute.toString().padLeft(2, '0')}';
-  }
+  CreateBookingRequest({
+    required this.userId,
+    this.vehicleId,
+    this.licensePlate,
+    this.brand,
+    this.model,
+    this.year,
+    required this.appointmentDate,
+    this.notes,
+    required this.serviceIds,
+  });
 
-  String get formattedDateTime {
-    return '$formattedDate - $formattedTime';
+  Map<String, dynamic> toJson() {
+    return {
+      'userId': userId,
+      'vehicleId': vehicleId,
+      'licensePlate': licensePlate,
+      'brand': brand,
+      'model': model,
+      'year': year,
+      'appointmentDate': appointmentDate.toIso8601String(),
+      'notes': notes,
+      'serviceIds': serviceIds,
+    };
   }
+}
 
-  /// Copy with
-  BookingModel copyWith({
-    int? bookingId,
-    int? userId,
-    int? serviceId,
-    int? mechanicId,
-    DateTime? bookingDate,
-    String? notes,
-    BookingStatus? status,
-    double? totalPrice,
-    DateTime? createdAt,
-    DateTime? updatedAt,
-    String? userName,
-    String? serviceName,
-    String? mechanicName,
-  }) {
-    return BookingModel(
-      bookingId: bookingId ?? this.bookingId,
-      userId: userId ?? this.userId,
-      serviceId: serviceId ?? this.serviceId,
-      mechanicId: mechanicId ?? this.mechanicId,
-      bookingDate: bookingDate ?? this.bookingDate,
-      notes: notes ?? this.notes,
-      status: status ?? this.status,
-      totalPrice: totalPrice ?? this.totalPrice,
-      createdAt: createdAt ?? this.createdAt,
-      updatedAt: updatedAt ?? this.updatedAt,
-      userName: userName ?? this.userName,
-      serviceName: serviceName ?? this.serviceName,
-      mechanicName: mechanicName ?? this.mechanicName,
+class Vehicle {
+  final int? vehicleId;
+  final int? userId;
+  final String licensePlate;
+  final String brand;
+  final String model;
+  final int? year;
+
+  Vehicle({
+    this.vehicleId,
+    this.userId,
+    required this.licensePlate,
+    required this.brand,
+    required this.model,
+    this.year,
+  });
+
+  factory Vehicle.fromJson(Map<String, dynamic> json) {
+    return Vehicle(
+      vehicleId: json['VehicleID'] ?? json['vehicleId'],
+      userId: json['UserID'] ?? json['userId'],
+      licensePlate: json['LicensePlate'] ?? json['licensePlate'] ?? '',
+      brand: json['Brand'] ?? json['brand'] ?? '',
+      model: json['Model'] ?? json['model'] ?? '',
+      year: json['Year'] ?? json['year'],
     );
   }
 
-  @override
-  String toString() {
-    return 'BookingModel(id: $bookingId, service: $serviceName, date: $formattedDateTime, status: ${status.displayName})';
+  Map<String, dynamic> toJson() {
+    return {
+      'VehicleID': vehicleId,
+      'UserID': userId,
+      'LicensePlate': licensePlate,
+      'Brand': brand,
+      'Model': model,
+      'Year': year,
+    };
   }
+
+  String get displayName => '$brand $model${year != null ? " ($year)" : ""}';
 }

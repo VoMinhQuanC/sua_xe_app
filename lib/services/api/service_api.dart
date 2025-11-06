@@ -1,7 +1,7 @@
 // lib/services/api/service_api.dart
 
 import 'package:dio/dio.dart';
-import '../api_service.dart';
+import 'api_service.dart';
 
 /// API Response wrapper
 class ApiResponse<T> {
