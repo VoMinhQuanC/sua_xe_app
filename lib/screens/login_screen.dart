@@ -5,7 +5,7 @@ import 'Technician/technician_main_page.dart';
 import 'register_screen.dart';
 import '../services/api/api_service.dart';
 import '../services/google_sign_in_service.dart';
-import '../services/auth_service.dart'; // ← THÊM IMPORT
+import '../services/auth_service.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -40,12 +40,25 @@ class _LoginScreenState extends State<LoginScreen> {
           // ⬇️ THÊM: Lưu userId và user info
           final userId = res.data['userId'] ?? res.data['data']?['userId'];
           if (userId != null) {
+            // ✅ QUAN TRỌNG: Lưu userId riêng trước
+            await AuthService.saveUserId(userId);
+            
             await AuthService.saveUserInfo(
               userId: userId,
               email: res.data['email'] ?? userCredential.user!.email ?? '',
-              name: res.data['fullName'] ?? res.data['name'] ?? userCredential.user!.displayName ?? '',
+              name: res.data['fullName'] ?? 
+                    res.data['name'] ?? 
+                    res.data['FullName'] ??  // ✅ Thêm kiểm tra FullName (Pascal Case)
+                    res.data['data']?['fullName'] ?? 
+                    res.data['data']?['FullName'] ??
+                    userCredential.user!.displayName ?? 
+                    'Khách hàng',
               roleId: res.data['roleId'] ?? res.data['role'],
             );
+            
+            // ✅ Debug: In ra thông tin đã lưu
+            print('🔍 Debug sau khi đăng nhập Google:');
+            await AuthService.debugPrintUserInfo();
           }
           // ⬆️ KẾT THÚC THÊM
           
@@ -95,12 +108,24 @@ class _LoginScreenState extends State<LoginScreen> {
         // ⬇️ THÊM: Lưu userId và user info
         final userId = res.data['userId'] ?? res.data['data']?['userId'];
         if (userId != null) {
+          // ✅ QUAN TRỌNG: Lưu userId riêng trước
+          await AuthService.saveUserId(userId);
+          
           await AuthService.saveUserInfo(
             userId: userId,
             email: res.data['email'] ?? res.data['data']?['email'] ?? '',
-            name: res.data['fullName'] ?? res.data['name'] ?? res.data['data']?['fullName'] ?? '',
+            name: res.data['fullName'] ?? 
+                  res.data['name'] ?? 
+                  res.data['FullName'] ??  // ✅ Thêm kiểm tra FullName (Pascal Case)
+                  res.data['data']?['fullName'] ?? 
+                  res.data['data']?['FullName'] ?? 
+                  'Khách hàng',
             roleId: res.data['roleId'] ?? res.data['role'] ?? res.data['data']?['roleId'],
           );
+          
+          // ✅ Debug: In ra thông tin đã lưu
+          print('🔍 Debug sau khi đăng nhập:');
+          await AuthService.debugPrintUserInfo();
         }
         // ⬆️ KẾT THÚC THÊM
         
@@ -117,6 +142,7 @@ class _LoginScreenState extends State<LoginScreen> {
       // Fallback local (admin/tech)
       if (username == "admin" && password == "123") {
         // ⬇️ THÊM: Lưu userId cho admin local
+        await AuthService.saveUserId(1);  // ✅ Lưu userId trước
         await AuthService.saveUserInfo(
           userId: 1, // Admin có userId = 1
           email: 'admin@localhost',
@@ -133,6 +159,7 @@ class _LoginScreenState extends State<LoginScreen> {
         return;
       } else if (username == "tech" && password == "123") {
         // ⬇️ THÊM: Lưu userId cho technician local
+        await AuthService.saveUserId(2);  // ✅ Lưu userId trước
         await AuthService.saveUserInfo(
           userId: 2, // Technician có userId = 2
           email: 'tech@localhost',
