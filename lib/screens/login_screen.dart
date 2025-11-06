@@ -37,30 +37,40 @@ class _LoginScreenState extends State<LoginScreen> {
             await api.saveToken(token.toString());
           }
           
-          // ⬇️ THÊM: Lưu userId và user info
-          final userId = res.data['userId'] ?? res.data['data']?['userId'];
+          // ✅ FIX: Lưu userId và user info - Lấy từ user.id
+          final userId = res.data['user']?['id'] ??     // ← FIX: Thêm user.id
+                         res.data['userId'] ??
+                         res.data['UserID'] ??
+                         res.data['user_id'] ??
+                         res.data['id'];
+          
           if (userId != null) {
             // ✅ QUAN TRỌNG: Lưu userId riêng trước
-            await AuthService.saveUserId(userId);
+            await AuthService.saveUserId(userId is int ? userId : int.parse(userId.toString()));
             
             await AuthService.saveUserInfo(
-              userId: userId,
-              email: res.data['email'] ?? userCredential.user!.email ?? '',
-              name: res.data['fullName'] ?? 
+              userId: userId is int ? userId : int.parse(userId.toString()),
+              email: res.data['user']?['email'] ??      // ← FIX: Lấy từ user.email
+                     res.data['email'] ?? 
+                     userCredential.user!.email ?? 
+                     '',
+              name: res.data['user']?['fullName'] ??    // ← FIX: Lấy từ user.fullName
+                    res.data['fullName'] ?? 
                     res.data['name'] ?? 
-                    res.data['FullName'] ??  // ✅ Thêm kiểm tra FullName (Pascal Case)
+                    res.data['FullName'] ??
                     res.data['data']?['fullName'] ?? 
                     res.data['data']?['FullName'] ??
                     userCredential.user!.displayName ?? 
                     'Khách hàng',
-              roleId: res.data['roleId'] ?? res.data['role'],
+              roleId: res.data['user']?['role'] ??      // ← FIX: Lấy từ user.role
+                      res.data['roleId'] ?? 
+                      res.data['role'],
             );
             
             // ✅ Debug: In ra thông tin đã lưu
             print('🔍 Debug sau khi đăng nhập Google:');
             await AuthService.debugPrintUserInfo();
           }
-          // ⬆️ KẾT THÚC THÊM
           
           if (!mounted) return;
           Navigator.pushReplacement(
@@ -85,10 +95,17 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _login() async {
+    print('======================================');
+    print('🚀 _login() được gọi');
+    print('======================================');
+    
     final username = _usernameController.text.trim();
     final password = _passwordController.text.trim();
+    
+    print('📧 Username: $username');
 
     if (username.isEmpty || password.isEmpty) {
+      print('❌ Username hoặc password trống');
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Vui lòng nhập tên đăng nhập và mật khẩu")),
       );
@@ -96,60 +113,125 @@ class _LoginScreenState extends State<LoginScreen> {
     }
 
     setState(() => _loading = true);
+    print('⏳ Đang gọi API login...');
+    
     final api = ApiService();
     try {
       final res = await api.login(username, password);
+      print('📩 Response status: ${res.statusCode}');
+      print('📩 Response từ API login: ${res.data}');
+      
       if (res.statusCode == 200 && res.data != null) {
         final token = res.data['token'] ?? res.data['accessToken'] ?? res.data['data']?['token'];
         if (token != null) {
           await api.saveToken(token.toString());
+          print('✅ Đã lưu token');
         }
         
-        // ⬇️ THÊM: Lưu userId và user info
-        final userId = res.data['userId'] ?? res.data['data']?['userId'];
+        // ✅ FIX: LẤY userId - ƯU TIÊN từ user.id
+        final userId = res.data['user']?['id'] ??        // ← FIX: THÊM DÒNG NÀY Ở ĐẦU
+                       res.data['userId'] ?? 
+                       res.data['UserID'] ?? 
+                       res.data['user_id'] ??
+                       res.data['id'] ??
+                       res.data['data']?['userId'] ??
+                       res.data['data']?['UserID'];
+        
+        print('🔍 userId từ API: $userId');
+        
         if (userId != null) {
-          // ✅ QUAN TRỌNG: Lưu userId riêng trước
-          await AuthService.saveUserId(userId);
+          print('⏳ Đang lưu userId: $userId');
           
+          // ✅ QUAN TRỌNG: Lưu userId và đợi hoàn tất
+          await AuthService.saveUserId(userId is int ? userId : int.parse(userId.toString()));
+          
+          // ✅ Đợi một chút để đảm bảo dữ liệu được lưu
+          await Future.delayed(const Duration(milliseconds: 100));
+          
+          // ✅ FIX: Lưu thông tin user đầy đủ - ƯU TIÊN từ user.*
           await AuthService.saveUserInfo(
-            userId: userId,
-            email: res.data['email'] ?? res.data['data']?['email'] ?? '',
-            name: res.data['fullName'] ?? 
+            userId: userId is int ? userId : int.parse(userId.toString()),
+            email: res.data['user']?['email'] ??        // ← FIX: Thêm user.email
+                   res.data['email'] ?? 
+                   res.data['Email'] ??
+                   res.data['data']?['email'] ?? 
+                   '',
+            name: res.data['user']?['fullName'] ??      // ← FIX: Thêm user.fullName
+                  res.data['fullName'] ?? 
+                  res.data['FullName'] ??
                   res.data['name'] ?? 
-                  res.data['FullName'] ??  // ✅ Thêm kiểm tra FullName (Pascal Case)
                   res.data['data']?['fullName'] ?? 
                   res.data['data']?['FullName'] ?? 
                   'Khách hàng',
-            roleId: res.data['roleId'] ?? res.data['role'] ?? res.data['data']?['roleId'],
+            roleId: res.data['user']?['role'] ??        // ← FIX: Thêm user.role
+                    res.data['roleId'] ?? 
+                    res.data['RoleID'] ??
+                    res.data['role'] ?? 
+                    res.data['data']?['roleId'],
           );
           
-          // ✅ Debug: In ra thông tin đã lưu
-          print('🔍 Debug sau khi đăng nhập:');
+          // ✅ Debug: Kiểm tra lại thông tin đã lưu
+          print('🔍 Debug sau khi lưu thông tin:');
           await AuthService.debugPrintUserInfo();
+          
+          // ✅ Kiểm tra lại userId trước khi navigate
+          final savedUserId = await AuthService.getUserId();
+          print('🔍 userId sau khi lưu: $savedUserId');
+          
+          if (savedUserId == null) {
+            throw Exception('Lưu userId thất bại');
+          }
+          
+          print('✅ Lưu thông tin thành công!');
+        } else {
+          print('❌ Không tìm thấy userId trong response');
+          throw Exception('Không tìm thấy userId trong response từ server');
         }
-        // ⬆️ KẾT THÚC THÊM
         
         if (!mounted) return;
+        
+        // ✅ Hiển thị thông báo thành công trước khi navigate
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Đăng nhập thành công!'),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 1),
+          ),
+        );
+        
+        // ✅ Đợi một chút trước khi navigate
+        await Future.delayed(const Duration(milliseconds: 500));
+        
+        // Navigate về trang chủ
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (context) => const MainPage()),
         );
         return;
       }
-      final message = res.data != null && res.data['message'] != null ? res.data['message'].toString() : 'Đăng nhập không thành công';
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+      
+      final message = res.data != null && res.data['message'] != null 
+          ? res.data['message'].toString() 
+          : 'Đăng nhập không thành công';
+      
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(message)),
+      );
     } catch (e) {
-      // Fallback local (admin/tech)
+      print('❌ Lỗi khi đăng nhập: $e');
+      
+      // Fallback local cho testing
       if (username == "admin" && password == "123") {
-        // ⬇️ THÊM: Lưu userId cho admin local
-        await AuthService.saveUserId(1);  // ✅ Lưu userId trước
+        print('📌 Sử dụng admin local');
+        await AuthService.saveUserId(1);
+        await Future.delayed(const Duration(milliseconds: 100));
         await AuthService.saveUserInfo(
-          userId: 1, // Admin có userId = 1
+          userId: 1,
           email: 'admin@localhost',
           name: 'Admin',
           roleId: 1,
         );
-        // ⬆️ KẾT THÚC
         
         if (!mounted) return;
         Navigator.pushReplacement(
@@ -157,27 +239,11 @@ class _LoginScreenState extends State<LoginScreen> {
           MaterialPageRoute(builder: (context) => const MainPage()),
         );
         return;
-      } else if (username == "tech" && password == "123") {
-        // ⬇️ THÊM: Lưu userId cho technician local
-        await AuthService.saveUserId(2);  // ✅ Lưu userId trước
-        await AuthService.saveUserInfo(
-          userId: 2, // Technician có userId = 2
-          email: 'tech@localhost',
-          name: 'Technician',
-          roleId: 3,
-        );
-        // ⬆️ KẾT THÚC
-        
-        if (!mounted) return;
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => const TechnicianMainPage()),
-        );
-        return;
       }
-
+      
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Lỗi kết nối API: $e')),
+        SnackBar(content: Text('Lỗi: $e')),
       );
     } finally {
       if (mounted) setState(() => _loading = false);

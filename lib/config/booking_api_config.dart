@@ -8,7 +8,7 @@ class BookingApiConfig {
   /// URL base của API backend
   /// - Development (local): 'http://localhost:3001/api'
   /// - Production (Google Cloud): 'https://your-domain.com/api'
-  static const String baseUrl = 'https://suaxe-api.as.r.appspot.com'; // TODO: Thay đổi URL này
+  static const String baseUrl = 'https://suaxe-api-2.as.r.appspot.com'; // TODO: Thay đổi URL này
   
   /// Timeout cho các request API (milliseconds)
   static const int requestTimeout = 30000; // 30 seconds

@@ -2,23 +2,28 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:suaxe_app/models/booking_model.dart';
 import 'package:suaxe_app/models/service_model.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 class BookingApiService {
-  // URL base của API - thay đổi theo môi trường của bạn
-  static const String baseUrl = 'https://suaxe-api.as.r.appspot.com'; // TODO: Thay đổi URL này
+  // ✅ FIX 1: Đổi URL sang suaxe-api-2
+  static const String baseUrl = 'https://suaxe-api-2.as.r.appspot.com';
   
-  // Lấy token từ shared preferences hoặc secure storage
+  static const _secureStorage = FlutterSecureStorage();
+  
   static Future<String?> _getAuthToken() async {
-    // TODO: Implement lấy token từ local storage
-    // Ví dụ: return await storage.read(key: 'auth_token');
-    return null;
+    try {
+      return await _secureStorage.read(key: 'access_token');
+    } catch (e) {
+      print('Lỗi khi lấy token: $e');
+      return null;
+    }
   }
 
-  // Helper để tạo headers
   static Future<Map<String, String>> _getHeaders() async {
     final token = await _getAuthToken();
     return {
       'Content-Type': 'application/json',
+      'Accept': 'application/json',
       if (token != null) 'Authorization': 'Bearer $token',
     };
   }
@@ -28,21 +33,29 @@ class BookingApiService {
   /// Lấy danh sách tất cả dịch vụ
   static Future<List<ServiceModel>> getAllServices() async {
     try {
+      print('🔍 Đang tải danh sách dịch vụ...');
+      print('🔍 URL: $baseUrl/api/services');
+      
       final headers = await _getHeaders();
       final response = await http.get(
-        Uri.parse('$baseUrl/services'),
+        Uri.parse('$baseUrl/api/services'),  // ✅ FIX 2: Thêm /api
         headers: headers,
       );
+
+      print('📩 Response status: ${response.statusCode}');
+      print('📩 Response body: ${response.body}');
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         if (data['success'] == true) {
-          final List servicesList = data['data'] ?? data['services'] ?? [];
+          final List servicesList = data['services'] ?? data['data'] ?? [];
+          print('✅ Tải thành công ${servicesList.length} dịch vụ');
           return servicesList.map((json) => ServiceModel.fromJson(json)).toList();
         }
       }
-      throw Exception('Không thể tải danh sách dịch vụ');
+      throw Exception('API trả về không thành công: ${response.statusCode}');
     } catch (e) {
+      print('❌ Lỗi khi tải dịch vụ: $e');
       throw Exception('Lỗi khi tải dịch vụ: $e');
     }
   }
@@ -52,7 +65,7 @@ class BookingApiService {
     try {
       final headers = await _getHeaders();
       final response = await http.get(
-        Uri.parse('$baseUrl/services/$serviceId'),
+        Uri.parse('$baseUrl/api/services/$serviceId'),  // ✅ FIX: Thêm /api
         headers: headers,
       );
 
@@ -68,9 +81,68 @@ class BookingApiService {
     }
   }
 
+  // ============ VEHICLES API ============
+  
+  /// Lấy danh sách xe của user
+  static Future<List<Vehicle>> getUserVehicles(int userId) async {
+    try {
+      print('🔍 Đang tải danh sách xe cho userId: $userId');
+      
+      final headers = await _getHeaders();
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/users/vehicles/user/$userId'),  // ✅ FIX: Thêm /api
+        headers: headers,
+      );
+
+      print('📩 Vehicles Response: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['success'] == true) {
+          final List vehiclesList = data['vehicles'] ?? data['data'] ?? [];
+          print('✅ Tải thành công ${vehiclesList.length} xe');
+          return vehiclesList.map((json) => Vehicle.fromJson(json)).toList();
+        }
+      }
+      
+      // Nếu không có xe, trả về list rỗng
+      if (response.statusCode == 200) {
+        print('ℹ️ User chưa có xe nào');
+        return [];
+      }
+      
+      throw Exception('Không thể tải danh sách xe');
+    } catch (e) {
+      print('❌ Lỗi khi tải xe: $e');
+      return [];
+    }
+  }
+  
+  /// Thêm xe mới
+  static Future<Vehicle> addVehicle(CreateVehicleRequest request) async {
+    try {
+      final headers = await _getHeaders();
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/users/vehicles'),  // ✅ FIX: Thêm /api
+        headers: headers,
+        body: json.encode(request.toJson()),
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final data = json.decode(response.body);
+        if (data['success'] == true) {
+          return Vehicle.fromJson(data['vehicle'] ?? data['data']);
+        }
+      }
+      throw Exception('Không thể thêm xe');
+    } catch (e) {
+      throw Exception('Lỗi khi thêm xe: $e');
+    }
+  }
+
   // ============ BOOKING/APPOINTMENTS API ============
   
-  /// Lấy danh sách lịch hẹn (có thể filter)
+  /// Lấy danh sách lịch hẹn
   static Future<List<BookingModel>> getAppointments({
     String? dateFrom,
     String? dateTo,
@@ -79,13 +151,12 @@ class BookingApiService {
     try {
       final headers = await _getHeaders();
       
-      // Xây dựng query parameters
       final queryParams = <String, String>{};
       if (dateFrom != null) queryParams['dateFrom'] = dateFrom;
       if (dateTo != null) queryParams['dateTo'] = dateTo;
       if (status != null) queryParams['status'] = status;
       
-      final uri = Uri.parse('$baseUrl/booking/appointments').replace(
+      final uri = Uri.parse('$baseUrl/api/booking/appointments').replace(  // ✅ FIX: Thêm /api
         queryParameters: queryParams.isNotEmpty ? queryParams : null,
       );
       
@@ -109,7 +180,7 @@ class BookingApiService {
     try {
       final headers = await _getHeaders();
       final response = await http.get(
-        Uri.parse('$baseUrl/booking/appointments/$appointmentId'),
+        Uri.parse('$baseUrl/api/booking/appointments/$appointmentId'),  // ✅ FIX: Thêm /api
         headers: headers,
       );
 
@@ -128,189 +199,51 @@ class BookingApiService {
   /// Tạo lịch hẹn mới
   static Future<BookingModel> createAppointment(CreateBookingRequest request) async {
     try {
+      print('🔍 Đang tạo lịch hẹn...');
+      print('🔍 Request data: ${request.toJson()}');
+      
       final headers = await _getHeaders();
       final response = await http.post(
-        Uri.parse('$baseUrl/booking/appointments'),
+        Uri.parse('$baseUrl/api/booking/create'),  // ✅ FIX: Thêm /api
         headers: headers,
         body: json.encode(request.toJson()),
       );
 
+      print('📩 Create booking response: ${response.statusCode}');
+      print('📩 Response body: ${response.body}');
+
       if (response.statusCode == 200 || response.statusCode == 201) {
         final data = json.decode(response.body);
         if (data['success'] == true) {
+          print('✅ Tạo lịch hẹn thành công');
           return BookingModel.fromJson(data['appointment'] ?? data['data']);
         }
       }
       
-      // Parse error message
       final errorData = json.decode(response.body);
       throw Exception(errorData['message'] ?? 'Không thể tạo lịch hẹn');
     } catch (e) {
+      print('❌ Lỗi khi tạo lịch hẹn: $e');
       throw Exception('Lỗi khi tạo lịch hẹn: $e');
     }
   }
 
-  /// Cập nhật lịch hẹn
-  static Future<BookingModel> updateAppointment(
-    int appointmentId,
-    Map<String, dynamic> updates,
-  ) async {
-    try {
-      final headers = await _getHeaders();
-      final response = await http.put(
-        Uri.parse('$baseUrl/booking/appointments/$appointmentId'),
-        headers: headers,
-        body: json.encode(updates),
-      );
-
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        if (data['success'] == true) {
-          return BookingModel.fromJson(data['appointment'] ?? data['data']);
-        }
-      }
-      
-      final errorData = json.decode(response.body);
-      throw Exception(errorData['message'] ?? 'Không thể cập nhật lịch hẹn');
-    } catch (e) {
-      throw Exception('Lỗi khi cập nhật lịch hẹn: $e');
-    }
-  }
-
   /// Hủy lịch hẹn
-  static Future<bool> cancelAppointment(int appointmentId, String? reason) async {
+  static Future<void> cancelAppointment(int appointmentId, String reason) async {
     try {
       final headers = await _getHeaders();
       final response = await http.put(
-        Uri.parse('$baseUrl/booking/appointments/$appointmentId/cancel'),
+        Uri.parse('$baseUrl/api/booking/appointments/$appointmentId/cancel'),  // ✅ FIX: Thêm /api
         headers: headers,
         body: json.encode({'reason': reason}),
       );
 
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        return data['success'] == true;
+      if (response.statusCode != 200) {
+        final errorData = json.decode(response.body);
+        throw Exception(errorData['message'] ?? 'Không thể hủy lịch hẹn');
       }
-      
-      final errorData = json.decode(response.body);
-      throw Exception(errorData['message'] ?? 'Không thể hủy lịch hẹn');
     } catch (e) {
       throw Exception('Lỗi khi hủy lịch hẹn: $e');
-    }
-  }
-
-  /// Xóa lịch hẹn (soft delete)
-  static Future<bool> deleteAppointment(int appointmentId) async {
-    try {
-      final headers = await _getHeaders();
-      final response = await http.delete(
-        Uri.parse('$baseUrl/booking/appointments/$appointmentId'),
-        headers: headers,
-      );
-
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        return data['success'] == true;
-      }
-      
-      final errorData = json.decode(response.body);
-      throw Exception(errorData['message'] ?? 'Không thể xóa lịch hẹn');
-    } catch (e) {
-      throw Exception('Lỗi khi xóa lịch hẹn: $e');
-    }
-  }
-
-  // ============ VEHICLES API ============
-  
-  /// Lấy danh sách xe của user
-  static Future<List<Vehicle>> getUserVehicles(int userId) async {
-    try {
-      final headers = await _getHeaders();
-      final response = await http.get(
-        Uri.parse('$baseUrl/users/$userId/vehicles'),
-        headers: headers,
-      );
-
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        if (data['success'] == true) {
-          final List vehiclesList = data['vehicles'] ?? data['data'] ?? [];
-          return vehiclesList.map((json) => Vehicle.fromJson(json)).toList();
-        }
-      }
-      throw Exception('Không thể tải danh sách xe');
-    } catch (e) {
-      throw Exception('Lỗi khi tải danh sách xe: $e');
-    }
-  }
-
-  /// Thêm xe mới
-  static Future<Vehicle> addVehicle(Vehicle vehicle) async {
-    try {
-      final headers = await _getHeaders();
-      final response = await http.post(
-        Uri.parse('$baseUrl/vehicles'),
-        headers: headers,
-        body: json.encode(vehicle.toJson()),
-      );
-
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        final data = json.decode(response.body);
-        if (data['success'] == true) {
-          return Vehicle.fromJson(data['vehicle'] ?? data['data']);
-        }
-      }
-      
-      final errorData = json.decode(response.body);
-      throw Exception(errorData['message'] ?? 'Không thể thêm xe');
-    } catch (e) {
-      throw Exception('Lỗi khi thêm xe: $e');
-    }
-  }
-
-  // ============ HELPER METHODS ============
-  
-  /// Kiểm tra slot thời gian còn trống
-  static Future<bool> checkAvailableSlot(DateTime dateTime) async {
-    try {
-      final headers = await _getHeaders();
-      final response = await http.post(
-        Uri.parse('$baseUrl/booking/check-availability'),
-        headers: headers,
-        body: json.encode({
-          'appointmentDate': dateTime.toIso8601String(),
-        }),
-      );
-
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        return data['available'] == true;
-      }
-      return false;
-    } catch (e) {
-      throw Exception('Lỗi khi kiểm tra slot: $e');
-    }
-  }
-
-  /// Lấy các slot thời gian khả dụng trong ngày
-  static Future<List<DateTime>> getAvailableSlots(DateTime date) async {
-    try {
-      final headers = await _getHeaders();
-      final response = await http.get(
-        Uri.parse('$baseUrl/booking/available-slots?date=${date.toIso8601String()}'),
-        headers: headers,
-      );
-
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        if (data['success'] == true) {
-          final List slots = data['slots'] ?? [];
-          return slots.map((slot) => DateTime.parse(slot)).toList();
-        }
-      }
-      return [];
-    } catch (e) {
-      throw Exception('Lỗi khi lấy slot khả dụng: $e');
     }
   }
 }

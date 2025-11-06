@@ -769,36 +769,72 @@ class _ServiceDetailScreen extends StatelessWidget {
     );
   }
 
-  void _handleBooking(BuildContext context) async {
-    // Lấy userId từ AuthService
-    final userId = await AuthService.getUserId();
-    
-    if (userId == null) {
-      // Chưa đăng nhập
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Row(
-            children: [
-              Icon(Icons.warning, color: Colors.white),
-              SizedBox(width: 12),
-              Expanded(
-                child: Text('Vui lòng đăng nhập để đặt lịch'),
-              ),
-            ],
-          ),
-          backgroundColor: Colors.orange,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
-          ),
-          duration: const Duration(seconds: 2),
+void _handleBooking(BuildContext context) async {
+  // ✅ Debug log
+  print('🔍 _handleBooking được gọi');
+  
+  // ✅ Kiểm tra trạng thái đăng nhập trước
+  final isLoggedIn = await AuthService.isLoggedIn();
+  print('🔍 isLoggedIn: $isLoggedIn');
+  
+  if (!isLoggedIn) {
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: const Row(
+          children: [
+            Icon(Icons.warning, color: Colors.white),
+            SizedBox(width: 12),
+            Expanded(
+              child: Text('Vui lòng đăng nhập để đặt lịch'),
+            ),
+          ],
         ),
-      );
-      return;
-    }
+        backgroundColor: Colors.orange,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10),
+        ),
+        duration: const Duration(seconds: 2),
+      ),
+    );
+    return;
+  }
+  
+  // ✅ Lấy userId
+  final userId = await AuthService.getUserId();
+  print('🔍 userId từ getUserId(): $userId');
+  
+  if (userId == null) {
+    // ✅ Nếu vẫn null, debug và yêu cầu đăng nhập lại
+    print('❌ userId là null mặc dù isLoggedIn = true');
+    await AuthService.debugPrintUserInfo();
     
-    // Navigate to booking screen
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: const Row(
+          children: [
+            Icon(Icons.error, color: Colors.white),
+            SizedBox(width: 12),
+            Expanded(
+              child: Text('Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại'),
+            ),
+          ],
+        ),
+        backgroundColor: Colors.red,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10),
+        ),
+        duration: const Duration(seconds: 3),
+      ),
+    );
+    return;
+  }
+  
+    // ✅ Navigate to booking screen
+    print('✅ Đang navigate tới UserBookingScreen với userId: $userId');
     if (!context.mounted) return;
     Navigator.push(
       context,

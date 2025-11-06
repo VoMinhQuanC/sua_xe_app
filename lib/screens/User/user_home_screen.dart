@@ -256,30 +256,55 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       // Thêm nút đặt lịch floating
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () async {
-          final userId = await AuthService.getUserId();
-          if (userId == null) {
-            if (!context.mounted) return;
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Vui lòng đăng nhập để đặt lịch'),
-                backgroundColor: Colors.orange,
-              ),
-            );
-            return;
-          }
-          
+      onPressed: () async {
+        // ✅ Debug log
+        print('🔍 FloatingActionButton Đặt lịch được nhấn');
+        
+        // ✅ Kiểm tra login
+        final isLoggedIn = await AuthService.isLoggedIn();
+        print('🔍 isLoggedIn: $isLoggedIn');
+        
+        if (!isLoggedIn) {
           if (!context.mounted) return;
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => UserBookingScreen(userId: userId),
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Vui lòng đăng nhập để đặt lịch'),
+              backgroundColor: Colors.orange,
             ),
           );
-        },
-        icon: const Icon(Icons.calendar_today),
-        label: const Text('Đặt lịch ngay'),
-        backgroundColor: Colors.redAccent,
+          return;
+        }
+        
+        // ✅ Lấy userId
+        final userId = await AuthService.getUserId();
+        print('🔍 userId: $userId');
+        
+        if (userId == null) {
+          print('❌ userId là null');
+          await AuthService.debugPrintUserInfo();
+          
+          if (!context.mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại'),
+              backgroundColor: Colors.red,
+            ),
+          );
+          return;
+        }
+        
+        print('✅ Navigate với userId: $userId');
+        if (!context.mounted) return;
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => UserBookingScreen(userId: userId),
+          ),
+        );
+      },
+      icon: const Icon(Icons.calendar_today),
+      label: const Text('Đặt lịch ngay'),
+      backgroundColor: Colors.redAccent,
       ),
     );
   }
