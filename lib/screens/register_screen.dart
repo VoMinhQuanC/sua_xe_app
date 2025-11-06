@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'login_screen.dart';
+import '../services/api/api_service.dart'; // ← THÊM IMPORT
+import 'package:suaxe_app/services/auth_service.dart'; // ← THÊM IMPORT
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -19,7 +21,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
   bool _agreeToTerms = false;
-  String _accountType = 'Khách hàng'; // Khách hàng hoặc Kỹ thuật viên
+  bool _loading = false; // ← THÊM loading state
+  String _accountType = 'Khách hàng';
 
   @override
   void dispose() {
@@ -31,7 +34,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
     super.dispose();
   }
 
-  void _register() {
+  // ⬇️ SỬA LẠI HÀM _register ĐỂ GỌI API THẬT
+  Future<void> _register() async {
     if (_formKey.currentState!.validate()) {
       if (!_agreeToTerms) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -43,23 +47,73 @@ class _RegisterScreenState extends State<RegisterScreen> {
         return;
       }
 
-      // Giả lập đăng ký (sau này có thể gọi API)
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Đăng ký thành công! Vui lòng đăng nhập.'),
-          backgroundColor: Colors.green,
-        ),
-      );
+      setState(() => _loading = true);
       
-      // Quay lại màn hình đăng nhập sau 1.5 giây
-      Future.delayed(const Duration(milliseconds: 1500), () {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => const LoginScreen()),
+      try {
+        final api = ApiService();
+        
+        // Xác định roleId dựa trên loại tài khoản
+        final roleId = _accountType == 'Khách hàng' ? 2 : 3; // 2: Customer, 3: Technician
+        
+        // Gọi API đăng ký
+        final res = await api.register(
+          fullName: _nameController.text.trim(),
+          email: _emailController.text.trim(),
+          phoneNumber: _phoneController.text.trim(),
+          password: _passwordController.text,
+          roleId: roleId,
         );
-      });
+        
+        if (!mounted) return;
+        
+        if (res.statusCode == 200 || res.statusCode == 201) {
+          // Đăng ký thành công
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Đăng ký thành công! Vui lòng đăng nhập.'),
+              backgroundColor: Colors.green,
+            ),
+          );
+          
+          // Quay lại màn hình đăng nhập sau 1.5 giây
+          Future.delayed(const Duration(milliseconds: 1500), () {
+            if (mounted) {
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (context) => const LoginScreen()),
+              );
+            }
+          });
+        } else {
+          // Hiển thị lỗi từ server
+          final message = res.data != null && res.data['message'] != null 
+              ? res.data['message'].toString() 
+              : 'Đăng ký không thành công';
+          
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(message),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      } catch (e) {
+        if (!mounted) return;
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Lỗi kết nối: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      } finally {
+        if (mounted) {
+          setState(() => _loading = false);
+        }
+      }
     }
   }
+  // ⬆️ KẾT THÚC SỬA
 
   @override
   Widget build(BuildContext context) {
@@ -322,7 +376,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 ),
                 const SizedBox(height: 24),
 
-                // Register button
+                // Register button - THÊM LOADING STATE
                 SizedBox(
                   width: double.infinity,
                   height: 50,
@@ -333,11 +387,20 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         borderRadius: BorderRadius.circular(12),
                       ),
                     ),
-                    onPressed: _register,
-                    child: const Text(
-                      "Đăng ký",
-                      style: TextStyle(fontSize: 18, color: Colors.white),
-                    ),
+                    onPressed: _loading ? null : _register, // ← Disable khi loading
+                    child: _loading
+                        ? const SizedBox(
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                            ),
+                          )
+                        : const Text(
+                            "Đăng ký",
+                            style: TextStyle(fontSize: 18, color: Colors.white),
+                          ),
                   ),
                 ),
                 const SizedBox(height: 16),

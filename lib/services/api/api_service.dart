@@ -47,6 +47,27 @@ class ApiService {
     );
   }
 
+  // ⬇️ THÊM METHOD REGISTER
+  Future<Response> register({
+    required String fullName,
+    required String email,
+    required String phoneNumber,
+    required String password,
+    required int roleId,
+  }) async {
+    return _dio.post(
+      '/api/auth/register',
+      data: {
+        'fullName': fullName,
+        'email': email,
+        'phoneNumber': phoneNumber,
+        'password': password,
+        'roleId': roleId,
+      },
+    );
+  }
+  // ⬆️ KẾT THÚC THÊM
+
   Future<Response> firebaseAuth(String idToken) async {
     return _dio.post('/api/auth/firebase', data: {
       'idToken': idToken,
@@ -69,10 +90,6 @@ class ApiService {
     return _dio.get('/api/users/profile');
   }   
 
-  // ============================================
-  // THÊM METHOD MỚI ĐỂ SỬA LỖI
-  // ============================================
-  
   /// Lấy chi tiết dịch vụ theo ID
   Future<Response> getServiceById(int serviceId) async {
     return _dio.get('/api/services/$serviceId');

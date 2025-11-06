@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
-import '../main.dart'; // để chuyển sang MainPage
-import 'Technician/technician_main_page.dart'; // để chuyển sang TechnicianMainPage
+import '../main.dart';
+import 'Technician/technician_main_page.dart';
 import 'register_screen.dart';
 import '../services/api/api_service.dart';
 import '../services/google_sign_in_service.dart';
+import '../services/auth_service.dart'; // ← THÊM IMPORT
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -26,7 +27,6 @@ class _LoginScreenState extends State<LoginScreen> {
       final userCredential = await _googleSignInService.signInWithGoogle();
       if (userCredential != null && userCredential.user != null) {
         final api = ApiService();
-        // Gửi token ID đến server của bạn để xác thực
         final idToken = await userCredential.user!.getIdToken();
         if (idToken == null) throw Exception('Failed to get ID token');
         final res = await api.firebaseAuth(idToken);
@@ -36,6 +36,19 @@ class _LoginScreenState extends State<LoginScreen> {
           if (token != null) {
             await api.saveToken(token.toString());
           }
+          
+          // ⬇️ THÊM: Lưu userId và user info
+          final userId = res.data['userId'] ?? res.data['data']?['userId'];
+          if (userId != null) {
+            await AuthService.saveUserInfo(
+              userId: userId,
+              email: res.data['email'] ?? userCredential.user!.email ?? '',
+              name: res.data['fullName'] ?? res.data['name'] ?? userCredential.user!.displayName ?? '',
+              roleId: res.data['roleId'] ?? res.data['role'],
+            );
+          }
+          // ⬆️ KẾT THÚC THÊM
+          
           if (!mounted) return;
           Navigator.pushReplacement(
             context,
@@ -78,7 +91,19 @@ class _LoginScreenState extends State<LoginScreen> {
         if (token != null) {
           await api.saveToken(token.toString());
         }
-        // Điều hướng sau khi login thành công
+        
+        // ⬇️ THÊM: Lưu userId và user info
+        final userId = res.data['userId'] ?? res.data['data']?['userId'];
+        if (userId != null) {
+          await AuthService.saveUserInfo(
+            userId: userId,
+            email: res.data['email'] ?? res.data['data']?['email'] ?? '',
+            name: res.data['fullName'] ?? res.data['name'] ?? res.data['data']?['fullName'] ?? '',
+            roleId: res.data['roleId'] ?? res.data['role'] ?? res.data['data']?['roleId'],
+          );
+        }
+        // ⬆️ KẾT THÚC THÊM
+        
         if (!mounted) return;
         Navigator.pushReplacement(
           context,
@@ -86,12 +111,20 @@ class _LoginScreenState extends State<LoginScreen> {
         );
         return;
       }
-      // Nếu server trả lỗi, hiển thị message nếu có
       final message = res.data != null && res.data['message'] != null ? res.data['message'].toString() : 'Đăng nhập không thành công';
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
     } catch (e) {
-      // Nếu gọi API thất bại (kết nối), fallback sang giả lập local (admin/tech)
+      // Fallback local (admin/tech)
       if (username == "admin" && password == "123") {
+        // ⬇️ THÊM: Lưu userId cho admin local
+        await AuthService.saveUserInfo(
+          userId: 1, // Admin có userId = 1
+          email: 'admin@localhost',
+          name: 'Admin',
+          roleId: 1,
+        );
+        // ⬆️ KẾT THÚC
+        
         if (!mounted) return;
         Navigator.pushReplacement(
           context,
@@ -99,6 +132,15 @@ class _LoginScreenState extends State<LoginScreen> {
         );
         return;
       } else if (username == "tech" && password == "123") {
+        // ⬇️ THÊM: Lưu userId cho technician local
+        await AuthService.saveUserInfo(
+          userId: 2, // Technician có userId = 2
+          email: 'tech@localhost',
+          name: 'Technician',
+          roleId: 3,
+        );
+        // ⬆️ KẾT THÚC
+        
         if (!mounted) return;
         Navigator.pushReplacement(
           context,
@@ -189,7 +231,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         )
                       : const Text(
                           "Đăng nhập",
-                          style: TextStyle(fontSize: 18),
+                          style: TextStyle(fontSize: 18, color: Colors.white),
                         ),
                 ),
               ),

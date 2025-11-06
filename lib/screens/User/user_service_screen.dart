@@ -1,6 +1,9 @@
+// ignore_for_file: unused_local_variable
+
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import '../../services/api/api_service.dart';
+
 
 class UserServiceScreen extends StatefulWidget {
   const UserServiceScreen({super.key});
