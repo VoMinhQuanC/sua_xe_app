@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../widgets/service_card.dart';
+import 'package:suaxe_app/screens/User/booking/user_booking_screen.dart';
+import 'package:suaxe_app/services/auth_service.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -49,30 +51,28 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-  appBar: AppBar(
-  backgroundColor: Colors.redAccent,
-  automaticallyImplyLeading: false, // bỏ nút back mặc định nếu có
-  title: Row(
-    children: [
-      Image.asset(
-        'assets/images/logo1.png',
-        height: 40, // chỉnh kích thước logo
-      ),
-      const SizedBox(width: 10),
-      const Text(
-        "VQT Bike Service",
-        style: TextStyle(
-          color: Colors.white,
-          fontWeight: FontWeight.bold,
-          fontSize: 20,
+      appBar: AppBar(
+        backgroundColor: Colors.redAccent,
+        automaticallyImplyLeading: false,
+        title: Row(
+          children: [
+            Image.asset(
+              'assets/images/logo1.png',
+              height: 40,
+            ),
+            const SizedBox(width: 10),
+            const Text(
+              "VQT Bike Service",
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+                fontSize: 20,
+              ),
+            ),
+          ],
         ),
+        centerTitle: false,
       ),
-    ],
-  ),
-  centerTitle: false, // để tiêu đề nằm bên trái
-),
-
-
       body: SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -251,9 +251,35 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
 
             const SizedBox(height: 16),
-        
           ],
         ),
+      ),
+      // Thêm nút đặt lịch floating
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () async {
+          final userId = await AuthService.getUserId();
+          if (userId == null) {
+            if (!context.mounted) return;
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Vui lòng đăng nhập để đặt lịch'),
+                backgroundColor: Colors.orange,
+              ),
+            );
+            return;
+          }
+          
+          if (!context.mounted) return;
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => UserBookingScreen(userId: userId),
+            ),
+          );
+        },
+        icon: const Icon(Icons.calendar_today),
+        label: const Text('Đặt lịch ngay'),
+        backgroundColor: Colors.redAccent,
       ),
     );
   }

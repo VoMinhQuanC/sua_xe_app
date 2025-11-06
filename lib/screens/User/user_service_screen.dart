@@ -3,6 +3,8 @@
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import '../../services/api/api_service.dart';
+import 'package:suaxe_app/screens/User/booking/user_booking_screen.dart';
+import 'package:suaxe_app/services/auth_service.dart';
 
 
 class UserServiceScreen extends StatefulWidget {
@@ -767,32 +769,41 @@ class _ServiceDetailScreen extends StatelessWidget {
     );
   }
 
-  void _handleBooking(BuildContext context) {
-    // TODO: Navigate to booking screen
-    // Navigator.push(
-    //   context,
-    //   MaterialPageRoute(
-    //     builder: (context) => UserBookingScreen(service: service),
-    //   ),
-    // );
+  void _handleBooking(BuildContext context) async {
+    // Lấy userId từ AuthService
+    final userId = await AuthService.getUserId();
     
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: const Row(
-          children: [
-            Icon(Icons.info_outline, color: Colors.white),
-            SizedBox(width: 12),
-            Expanded(
-              child: Text('Chức năng đặt lịch đang được phát triển'),
-            ),
-          ],
+    if (userId == null) {
+      // Chưa đăng nhập
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Row(
+            children: [
+              Icon(Icons.warning, color: Colors.white),
+              SizedBox(width: 12),
+              Expanded(
+                child: Text('Vui lòng đăng nhập để đặt lịch'),
+              ),
+            ],
+          ),
+          backgroundColor: Colors.orange,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+          duration: const Duration(seconds: 2),
         ),
-        backgroundColor: Colors.redAccent,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10),
-        ),
-        duration: const Duration(seconds: 2),
+      );
+      return;
+    }
+    
+    // Navigate to booking screen
+    if (!context.mounted) return;
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => UserBookingScreen(userId: userId),
       ),
     );
   }

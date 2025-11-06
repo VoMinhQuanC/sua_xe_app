@@ -4,7 +4,7 @@ import 'screens/welcome_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/User/user_home_screen.dart';
 import 'screens/User/user_profile_screen.dart';
-import 'screens/User/user_service_screen.dart'; // ← Sử dụng UserServiceScreen mới
+import 'screens/User/user_service_screen.dart';
 import 'screens/User/user_news_screen.dart';
 
 void main() async {
@@ -24,6 +24,10 @@ class MainApp extends StatelessWidget {
         primarySwatch: Colors.red,
         scaffoldBackgroundColor: Colors.white,
       ),
+      // Thêm routes
+      routes: {
+        '/login': (context) => const LoginScreen(),
+      },
       home: const WelcomeScreen(),
     );
   }
@@ -41,7 +45,7 @@ class _MainPageState extends State<MainPage> {
 
   final List<Widget> _screens = [
     const HomeScreen(),
-    const UserServiceScreen(), // ← Sử dụng UserServiceScreen mới!
+    const UserServiceScreen(),
     const NewsScreen(),
     const ProfileScreen(),
   ];
