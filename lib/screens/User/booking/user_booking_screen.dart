@@ -1,5 +1,4 @@
 // ignore_for_file: prefer_final_fields
-
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:suaxe_app/models/booking_model.dart';
@@ -162,6 +161,8 @@ class _UserBookingScreenState extends State<UserBookingScreen> {
   }
 
   // ============ STEP 1: VEHICLE SELECTION ============
+
+  // Tìm widget _buildVehicleSelection và sửa phần hiển thị xe:
   Widget _buildVehicleSelection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -185,26 +186,42 @@ class _UserBookingScreenState extends State<UserBookingScreen> {
               ),
             ),
           ),
+          
         if (_vehicles.isNotEmpty && !_isAddingNewVehicle) ...[
           const Text(
             'Chọn xe của bạn:',
             style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 12),
+          
+          // ✅ THAY ĐỔI: Thêm icon xóa cho mỗi xe
           ...(_vehicles.map((vehicle) => Card(
-                margin: const EdgeInsets.only(bottom: 8),
-                child: RadioListTile<Vehicle>(
-                  value: vehicle,
-                  groupValue: _selectedVehicle,
-                  onChanged: (value) => setState(() => _selectedVehicle = value),
-                  title: Text(
-                    vehicle.displayName,
-                    style: const TextStyle(fontWeight: FontWeight.w600),
+            margin: const EdgeInsets.only(bottom: 8),
+            child: RadioListTile<Vehicle>(
+              value: vehicle,
+              groupValue: _selectedVehicle,
+              onChanged: (value) => setState(() => _selectedVehicle = value),
+              title: Text(
+                vehicle.displayName,
+                style: const TextStyle(fontWeight: FontWeight.w600),
+              ),
+              subtitle: Text('Biển số: ${vehicle.licensePlate}'),
+              secondary: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.directions_car),
+                  const SizedBox(width: 8),
+                  // ✅ THÊM: Nút xóa
+                  IconButton(
+                    icon: const Icon(Icons.delete, color: Colors.red),
+                    onPressed: () => _confirmDeleteVehicle(vehicle),
+                    tooltip: 'Xóa xe',
                   ),
-                  subtitle: Text('Biển số: ${vehicle.licensePlate}'),
-                  secondary: const Icon(Icons.directions_car),
-                ),
-              ))),
+                ],
+              ),
+            ),
+          ))),
+          
           const SizedBox(height: 12),
           TextButton.icon(
             onPressed: () => setState(() => _isAddingNewVehicle = true),
@@ -212,6 +229,7 @@ class _UserBookingScreenState extends State<UserBookingScreen> {
             label: const Text('Thêm xe mới'),
           ),
         ],
+        
         if (_isAddingNewVehicle) _buildAddVehicleForm(),
       ],
     );
@@ -298,41 +316,54 @@ class _UserBookingScreenState extends State<UserBookingScreen> {
   }
 
   Future<void> _saveNewVehicle() async {
-    if (_licensePlateController.text.isEmpty ||
-        _brandController.text.isEmpty ||
-        _modelController.text.isEmpty) {
-      _showErrorDialog('Vui lòng điền đầy đủ thông tin xe');
-      return;
-    }
-
-    setState(() => _isLoading = true);
-    try {
-      final newVehicle = Vehicle(
-        userId: widget.userId,
-        licensePlate: _licensePlateController.text.trim(),
-        brand: _brandController.text.trim(),
-        model: _modelController.text.trim(),
-        year: _yearController.text.isNotEmpty 
-            ? int.tryParse(_yearController.text) 
-            : null,
-      );
-
-      final savedVehicle = await BookingApiService.addVehicle(newVehicle);
-      
-      setState(() {
-        _vehicles.add(savedVehicle);
-        _selectedVehicle = savedVehicle;
-        _isAddingNewVehicle = false;
-        _clearVehicleForm();
-      });
-
-      _showSuccessDialog('Đã thêm xe thành công');
-    } catch (e) {
-      _showErrorDialog('Lỗi khi thêm xe: $e');
-    } finally {
-      setState(() => _isLoading = false);
-    }
+  if (_licensePlateController.text.isEmpty ||
+      _brandController.text.isEmpty ||
+      _modelController.text.isEmpty) {
+    _showErrorDialog('Vui lòng điền đầy đủ thông tin xe');
+    return;
   }
+
+  setState(() => _isLoading = true);
+  
+  try {
+    print('🔍 Current vehicles: ${_vehicles.length}');
+    
+    final newVehicle = Vehicle(
+      userId: widget.userId,
+      licensePlate: _licensePlateController.text.trim(),
+      brand: _brandController.text.trim(),
+      model: _modelController.text.trim(),
+      year: _yearController.text.isNotEmpty 
+          ? int.tryParse(_yearController.text) 
+          : null,
+    );
+    
+    final savedVehicle = await BookingApiService.addVehicle(newVehicle);
+    
+    print('🔍 savedVehicle.vehicleId: ${savedVehicle.vehicleId}');
+    print('🔍 savedVehicle.licensePlate: ${savedVehicle.licensePlate}');
+    
+    setState(() {
+      print('🔍 BEFORE add: ${_vehicles.length} vehicles');
+      _vehicles.add(savedVehicle);
+      print('🔍 AFTER add: ${_vehicles.length} vehicles');
+      
+      _selectedVehicle = savedVehicle;
+      _isAddingNewVehicle = false;
+      _clearVehicleForm();
+    });
+
+    print('✅ Vehicles list: ${_vehicles.map((v) => v.licensePlate).toList()}');
+    
+    _showSuccessDialog('Đã thêm xe thành công');
+    
+  } catch (e) {
+    print('❌ ERROR: $e');
+    _showErrorDialog('Lỗi khi thêm xe: $e');
+  } finally {
+    setState(() => _isLoading = false);
+  }
+}
 
   void _clearVehicleForm() {
     _licensePlateController.clear();
@@ -801,4 +832,98 @@ class _UserBookingScreenState extends State<UserBookingScreen> {
       ),
     );
   }
+
+  /// Xóa xe
+  Future<void> _deleteVehicle(Vehicle vehicle) async {
+    setState(() => _isLoading = true);
+    
+    try {
+      print('🗑️ Deleting vehicle: ${vehicle.vehicleId}');
+      
+      await BookingApiService.deleteVehicle(vehicle.vehicleId!);
+      
+      setState(() {
+        // Xóa xe khỏi list
+        _vehicles.removeWhere((v) => v.vehicleId == vehicle.vehicleId);
+        
+        // Nếu xe đang được chọn, clear selection
+        if (_selectedVehicle?.vehicleId == vehicle.vehicleId) {
+          _selectedVehicle = _vehicles.isNotEmpty ? _vehicles.first : null;
+        }
+      });
+      
+      print('✅ Vehicle removed from list. Remaining: ${_vehicles.length}');
+      
+      _showSuccessDialog('Đã xóa xe thành công');
+      
+    } catch (e) {
+      print('❌ Error deleting vehicle: $e');
+      _showErrorDialog('Lỗi khi xóa xe: $e');
+    } finally {
+      setState(() => _isLoading = false);
+    }
+  }
+  /// Hiển thị dialog xác nhận xóa xe
+void _confirmDeleteVehicle(Vehicle vehicle) {
+  showDialog(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: const Row(
+        children: [
+          Icon(Icons.warning, color: Colors.orange, size: 28),
+          SizedBox(width: 12),
+          Text('Xác nhận xóa xe'),
+        ],
+      ),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Bạn có chắc muốn xóa xe này?'),
+          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.grey.shade100,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  vehicle.displayName,
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 4),
+                Text('Biển số: ${vehicle.licensePlate}'),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+          const Text(
+            'Lưu ý: Xe sẽ bị xóa khỏi danh sách. Bạn có thể thêm lại sau nếu cần.',
+            style: TextStyle(fontSize: 12, color: Colors.grey),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Hủy'),
+        ),
+        ElevatedButton(
+          onPressed: () {
+            Navigator.pop(context);
+            _deleteVehicle(vehicle);
+          },
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.red,
+          ),
+          child: const Text('Xóa xe'),
+        ),
+      ],
+    ),
+  );
+}
+
 }

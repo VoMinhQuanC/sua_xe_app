@@ -38,7 +38,7 @@ class BookingApiService {
       
       final headers = await _getHeaders();
       final response = await http.get(
-        Uri.parse('$baseUrl/api/services'),  // ✅ FIX 2: Thêm /api
+        Uri.parse('$baseUrl/api/services'),
         headers: headers,
       );
 
@@ -65,7 +65,7 @@ class BookingApiService {
     try {
       final headers = await _getHeaders();
       final response = await http.get(
-        Uri.parse('$baseUrl/api/services/$serviceId'),  // ✅ FIX: Thêm /api
+        Uri.parse('$baseUrl/api/services/$serviceId'),
         headers: headers,
       );
 
@@ -90,7 +90,7 @@ class BookingApiService {
       
       final headers = await _getHeaders();
       final response = await http.get(
-        Uri.parse('$baseUrl/api/users/vehicles/user/$userId'),  // ✅ FIX: Thêm /api
+        Uri.parse('$baseUrl/api/users/vehicles/user'), // Bỏ /$userId
         headers: headers,
       );
 
@@ -119,25 +119,53 @@ class BookingApiService {
   }
   
   /// Thêm xe mới
-  static Future<Vehicle> addVehicle(CreateVehicleRequest request) async {
+  static Future<Vehicle> addVehicle(Vehicle request) async {
     try {
+      print('🔍 Đang thêm xe mới...');
+      print('🔍 Vehicle data: ${request.toJson()}');
+      
       final headers = await _getHeaders();
       final response = await http.post(
-        Uri.parse('$baseUrl/api/users/vehicles'),  // ✅ FIX: Thêm /api
+        Uri.parse('$baseUrl/api/users/vehicles'),
         headers: headers,
         body: json.encode(request.toJson()),
       );
 
+      print('📩 Add vehicle response: ${response.statusCode}');
+      print('📩 Response body: ${response.body}');
+
       if (response.statusCode == 200 || response.statusCode == 201) {
         final data = json.decode(response.body);
         if (data['success'] == true) {
-          return Vehicle.fromJson(data['vehicle'] ?? data['data']);
+          print('✅ Thêm xe thành công');
+          
+          // ✅ FIX: Tạo Vehicle object từ request + vehicleId từ response
+          return Vehicle(
+            vehicleId: data['vehicleId'],  // Lấy từ backend response
+            userId: request.userId,        // Lấy từ request
+            licensePlate: request.licensePlate,
+            brand: request.brand,
+            model: request.model,
+            year: request.year,
+          );
         }
       }
-      throw Exception('Không thể thêm xe');
+      
+      final errorData = json.decode(response.body);
+      throw Exception(errorData['message'] ?? 'Không thể thêm xe');
     } catch (e) {
+      print('❌ Lỗi khi thêm xe: $e');
       throw Exception('Lỗi khi thêm xe: $e');
     }
+  }
+
+
+  static Future<void> deleteVehicle(int vehicleId) async {
+    final response = await http.delete(
+      Uri.parse('$baseUrl/api/users/vehicles/$vehicleId'),
+      headers: await _getHeaders(),
+    );
+    if (response.statusCode != 200) throw Exception('Cannot delete');
   }
 
   // ============ BOOKING/APPOINTMENTS API ============
@@ -156,7 +184,7 @@ class BookingApiService {
       if (dateTo != null) queryParams['dateTo'] = dateTo;
       if (status != null) queryParams['status'] = status;
       
-      final uri = Uri.parse('$baseUrl/api/booking/appointments').replace(  // ✅ FIX: Thêm /api
+      final uri = Uri.parse('$baseUrl/api/booking/appointments').replace(
         queryParameters: queryParams.isNotEmpty ? queryParams : null,
       );
       
@@ -180,7 +208,7 @@ class BookingApiService {
     try {
       final headers = await _getHeaders();
       final response = await http.get(
-        Uri.parse('$baseUrl/api/booking/appointments/$appointmentId'),  // ✅ FIX: Thêm /api
+        Uri.parse('$baseUrl/api/booking/appointments/$appointmentId'),
         headers: headers,
       );
 
@@ -204,7 +232,7 @@ class BookingApiService {
       
       final headers = await _getHeaders();
       final response = await http.post(
-        Uri.parse('$baseUrl/api/booking/create'),  // ✅ FIX: Thêm /api
+        Uri.parse('$baseUrl/api/booking/create'),
         headers: headers,
         body: json.encode(request.toJson()),
       );
@@ -231,19 +259,56 @@ class BookingApiService {
   /// Hủy lịch hẹn
   static Future<void> cancelAppointment(int appointmentId, String reason) async {
     try {
+      print('🔍 Đang hủy lịch hẹn $appointmentId...');
+      
       final headers = await _getHeaders();
       final response = await http.put(
-        Uri.parse('$baseUrl/api/booking/appointments/$appointmentId/cancel'),  // ✅ FIX: Thêm /api
+        Uri.parse('$baseUrl/api/booking/appointments/$appointmentId/cancel'),
         headers: headers,
         body: json.encode({'reason': reason}),
       );
 
-      if (response.statusCode != 200) {
-        final errorData = json.decode(response.body);
-        throw Exception(errorData['message'] ?? 'Không thể hủy lịch hẹn');
+      print('📩 Cancel appointment response: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        print('✅ Hủy lịch hẹn thành công');
+        return;
       }
+      
+      final errorData = json.decode(response.body);
+      throw Exception(errorData['message'] ?? 'Không thể hủy lịch hẹn');
     } catch (e) {
+      print('❌ Lỗi khi hủy lịch hẹn: $e');
       throw Exception('Lỗi khi hủy lịch hẹn: $e');
+    }
+  }
+
+  /// Lấy lịch hẹn của user
+  static Future<List<BookingModel>> getUserAppointments(int userId) async {
+    try {
+      print('🔍 Đang tải lịch hẹn của user $userId...');
+      
+      final headers = await _getHeaders();
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/booking/user/$userId'),
+        headers: headers,
+      );
+
+      print('📩 User appointments response: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['success'] == true) {
+          final List appointmentsList = data['appointments'] ?? data['data'] ?? [];
+          print('✅ Tải thành công ${appointmentsList.length} lịch hẹn');
+          return appointmentsList.map((json) => BookingModel.fromJson(json)).toList();
+        }
+      }
+      
+      throw Exception('Không thể tải lịch hẹn của user');
+    } catch (e) {
+      print('❌ Lỗi khi tải lịch hẹn: $e');
+      return [];
     }
   }
 }

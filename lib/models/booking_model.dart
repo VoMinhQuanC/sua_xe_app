@@ -243,12 +243,12 @@ class Vehicle {
 
   Map<String, dynamic> toJson() {
     return {
-      'VehicleID': vehicleId,
-      'UserID': userId,
-      'LicensePlate': licensePlate,
-      'Brand': brand,
-      'Model': model,
-      'Year': year,
+      'vehicleID': vehicleId,
+      'userID': userId,
+      'licensePlate': licensePlate,
+      'brand': brand,
+      'model': model,
+      'year': year,
     };
   }
 
