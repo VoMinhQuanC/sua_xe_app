@@ -23,7 +23,7 @@ class ApiService {
     // Interceptor: đính kèm token nếu có
     dio.interceptors.add(InterceptorsWrapper(onRequest: (options, handler) async {
       try {
-        final token = await service._storage.read(key: 'access_token');
+        final token = await service._storage.read(key: 'auth_token');
         if (token != null && token.isNotEmpty) {
           options.headers['Authorization'] = 'Bearer $token';
         }
@@ -75,11 +75,11 @@ class ApiService {
   }
 
   Future<void> saveToken(String token) async {
-    await _storage.write(key: 'access_token', value: token);
+    await _storage.write(key: 'auth_token', value: token);
   }
 
   Future<void> clearToken() async {
-    await _storage.delete(key: 'access_token');
+    await _storage.delete(key: 'auth_token');
   }
 
   Future<Response> getServices() async {

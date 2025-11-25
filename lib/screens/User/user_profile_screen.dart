@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:suaxe_app/screens/User/booking/my_booking_screen.dart';
 import 'package:suaxe_app/screens/User/booking/user_booking_screen.dart';
+import 'package:suaxe_app/screens/User/profile/edit_profile_screen.dart';
 import 'package:suaxe_app/services/auth_service.dart';
 
 class ProfileScreen extends StatelessWidget {
@@ -112,10 +113,10 @@ class ProfileScreen extends StatelessWidget {
                   icon: Icons.person_outline,
                   title: 'Thông tin cá nhân',
                   onTap: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Tính năng đang phát triển'),
-                        duration: Duration(seconds: 1),
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const EditProfileScreen(),
                       ),
                     );
                   },

@@ -71,7 +71,11 @@ class BookingModel {
       model: json['Model'] ?? json['model'],
       year: json['Year'] ?? json['year'],
       mechanicName: json['MechanicName'] ?? json['mechanicName'],
-      services: json['Services'] ?? json['services'],
+      services: json['Services'] is List
+        ? (json['Services'] as List).join(', ')
+        : json['services'] is List
+            ? (json['services'] as List).join(', ')
+            : json['Services'] ?? json['services'],
       serviceDetails: json['serviceDetails'] != null
           ? (json['serviceDetails'] as List)
               .map((e) => BookingServiceDetail.fromJson(e))
@@ -107,6 +111,7 @@ class BookingModel {
       case 'Completed':
         return 'Hoàn thành';
       case 'Cancelled':
+      case 'Canceled':  
         return 'Đã hủy';
       default:
         return status;
@@ -117,17 +122,18 @@ class BookingModel {
   String get statusColor {
     switch (status) {
       case 'Pending':
-        return '#FFA500'; // Orange
+        return '#FF9800'; // Cam đậm
       case 'Confirmed':
-        return '#4CAF50'; // Green
+        return '#4CAF50'; // Xanh lá
       case 'In Progress':
-        return '#2196F3'; // Blue
+        return '#2196F3'; // Xanh dương
       case 'Completed':
-        return '#00BCD4'; // Cyan
+        return '#00897B'; // Xanh ngọc Material
       case 'Cancelled':
-        return '#F44336'; // Red
+      case 'Canceled':
+        return '#E53935'; // Đỏ đậm
       default:
-        return '#9E9E9E'; // Grey
+        return '#757575'; // Xám đậm
     }
   }
 }

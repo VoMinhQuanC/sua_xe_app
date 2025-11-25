@@ -1,5 +1,7 @@
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart';  // ← File này đã được tạo tự động
 import 'screens/welcome_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/User/user_home_screen.dart';
@@ -9,12 +11,20 @@ import 'screens/User/user_news_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp();
-  runApp(const MainApp());
+  
+  const storage = FlutterSecureStorage();
+  await storage.delete(key: 'access_token');
+  
+  // Khởi tạo Firebase
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+  
+  runApp(const MyApp());
 }
 
-class MainApp extends StatelessWidget {
-  const MainApp({super.key});
+class MyApp extends StatelessWidget {
+  const MyApp({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -24,7 +34,6 @@ class MainApp extends StatelessWidget {
         primarySwatch: Colors.red,
         scaffoldBackgroundColor: Colors.white,
       ),
-      // Thêm routes
       routes: {
         '/login': (context) => const LoginScreen(),
       },

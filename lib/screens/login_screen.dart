@@ -35,7 +35,7 @@ class _LoginScreenState extends State<LoginScreen> {
         if (res.statusCode == 200 && res.data != null) {
           final token = res.data['token'] ?? res.data['accessToken'] ?? res.data['data']?['token'];
           if (token != null) {
-            await api.saveToken(token.toString());
+
             
             // ✅ LƯU TOKEN VÀO FLUTTER_SECURE_STORAGE
             const storage = FlutterSecureStorage();

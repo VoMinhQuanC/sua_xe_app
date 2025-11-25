@@ -328,7 +328,7 @@ class BookingCard extends StatelessWidget {
               if (booking.licensePlate != null) ...[
                 Row(
                   children: [
-                    Icon(Icons.directions_car, size: 20, color: Colors.grey.shade600),
+                    Icon(Icons.two_wheeler, size: 20, color: Colors.grey.shade600),
                     const SizedBox(width: 8),
                     Text(
                       '${booking.brand ?? ''} ${booking.model ?? ''} - ${booking.licensePlate}',
@@ -360,12 +360,27 @@ class BookingCard extends StatelessWidget {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
-                    TextButton.icon(
+                    ElevatedButton.icon(
                       onPressed: onCancel,
-                      icon: const Icon(Icons.cancel, size: 18),
-                      label: const Text('Hủy lịch'),
-                      style: TextButton.styleFrom(
-                        foregroundColor: Colors.red,
+                      icon: const Icon(Icons.cancel_outlined, size: 20),
+                      label: const Text(
+                        'HỦY LỊCH',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                        ),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.red.shade600,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 24,
+                          vertical: 12,
+                        ),
+                        elevation: 3,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
                       ),
                     ),
                   ],
@@ -445,39 +460,61 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Status Card
-            Card(
-              color: statusColor.withOpacity(0.1),
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Row(
-                  children: [
-                    Icon(Icons.info, color: statusColor, size: 32),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'Trạng thái',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey,
-                            ),
-                          ),
-                          Text(
-                            _booking!.statusInVietnamese,
-                            style: TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                              color: statusColor,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
+            // Status Card - Nổi bật hơn
+            Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    statusColor.withOpacity(0.15),
+                    statusColor.withOpacity(0.05),
                   ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
                 ),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: statusColor.withOpacity(0.5),
+                  width: 2,
+                ),
+              ),
+              padding: const EdgeInsets.all(20),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: statusColor.withOpacity(0.2),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(Icons.info_outline, color: statusColor, size: 32),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Trạng thái',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: Colors.grey.shade700,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          _booking!.statusInVietnamese,
+                          style: TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                            color: statusColor,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
             ),
             const SizedBox(height: 16),
@@ -502,7 +539,7 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
                     'Thời gian dự kiến',
                     '${_booking!.serviceDuration} phút',
                   ),
-              ],
+              ],  
             ),
 
             // Thông tin xe
@@ -510,7 +547,7 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
               'Thông tin xe',
               [
                 _buildInfoRow(
-                  Icons.directions_car,
+                  Icons.two_wheeler,
                   'Biển số',
                   _booking!.licensePlate ?? 'N/A',
                 ),
@@ -543,7 +580,10 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
                 [
                   Padding(
                     padding: const EdgeInsets.symmetric(vertical: 8),
-                    child: Text(_booking!.services!),
+                    child: Text(
+                      _parseServicesText(_booking!.services!),
+                      style: const TextStyle(fontSize: 14),
+                    ),
                   ),
                 ],
               ),
@@ -677,6 +717,19 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
         ],
       ),
     );
+  }
+
+  String _parseServicesText(String servicesText) {
+    // Tách các service name từ raw text
+    final regex = RegExp(r'ServiceName:\s*([^,}]+)');
+    final matches = regex.allMatches(servicesText);
+    
+    if (matches.isEmpty) {
+      return servicesText; // Trả về text gốc nếu không parse được
+    }
+    
+    final serviceNames = matches.map((m) => m.group(1)?.trim()).where((s) => s != null).toList();
+    return serviceNames.join(', ');
   }
 }
 

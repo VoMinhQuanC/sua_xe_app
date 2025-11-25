@@ -12,7 +12,7 @@ class BookingApiService {
   
   static Future<String?> _getAuthToken() async {
     try {
-      return await _secureStorage.read(key: 'access_token');
+      return await _secureStorage.read(key: 'auth_token');
     } catch (e) {
       print('Lỗi khi lấy token: $e');
       return null;
@@ -184,7 +184,7 @@ class BookingApiService {
       if (dateTo != null) queryParams['dateTo'] = dateTo;
       if (status != null) queryParams['status'] = status;
       
-      final uri = Uri.parse('$baseUrl/api/booking/appointments').replace(
+      final uri = Uri.parse('$baseUrl/api/booking/my-appointments').replace(
         queryParameters: queryParams.isNotEmpty ? queryParams : null,
       );
       
@@ -290,7 +290,7 @@ class BookingApiService {
       
       final headers = await _getHeaders();
       final response = await http.get(
-        Uri.parse('$baseUrl/api/booking/user/$userId'),
+        Uri.parse('$baseUrl/api/booking/my-appointments'),
         headers: headers,
       );
 
