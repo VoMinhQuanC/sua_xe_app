@@ -22,7 +22,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 4, vsync: this);
+    _tabController = TabController(length: 5, vsync: this);
     _loadBookings();
   }
 
@@ -77,7 +77,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
             Tab(
               child: Row(
                 children: [
-                  const Icon(Icons.pending),
+                  const Icon(Icons.schedule),
                   const SizedBox(width: 8),
                   Text('Chờ xác nhận (${_filterBookings('Pending').length})'),
                 ],
@@ -86,18 +86,27 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
             Tab(
               child: Row(
                 children: [
-                  const Icon(Icons.build),
+                  const Icon(Icons.check_circle_outline),
                   const SizedBox(width: 8),
-                  Text('Đang sửa (${_filterBookings('In Progress').length})'),
+                  Text('Đã xác nhận (${_filterBookings('Confirmed').length})'),
                 ],
               ),
             ),
             Tab(
               child: Row(
                 children: [
-                  const Icon(Icons.check_circle),
+                  const Icon(Icons.verified),
                   const SizedBox(width: 8),
                   Text('Hoàn thành (${_filterBookings('Completed').length})'),
+                ],
+              ),
+            ),
+            Tab(
+              child: Row(
+                children: [
+                  const Icon(Icons.cancel),
+                  const SizedBox(width: 8),
+                  Text('Đã hủy (${_filterBookings('Canceled').length})'),
                 ],
               ),
             ),
@@ -113,8 +122,9 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
                 children: [
                   _buildBookingList(_allBookings),
                   _buildBookingList(_filterBookings('Pending')),
-                  _buildBookingList(_filterBookings('In Progress')),
+                  _buildBookingList(_filterBookings('Confirmed')),    // Mới thêm
                   _buildBookingList(_filterBookings('Completed')),
+                  _buildBookingList(_filterBookings('Canceled')),     // Mới thêm
                 ],
               ),
             ),
