@@ -3,6 +3,7 @@ import 'package:suaxe_app/screens/User/booking/my_booking_screen.dart';
 import 'package:suaxe_app/screens/User/booking/user_booking_screen.dart';
 import 'package:suaxe_app/screens/User/profile/edit_profile_screen.dart';
 import 'package:suaxe_app/services/auth_service.dart';
+import 'package:suaxe_app/screens/User/vehicles/my_vehicle_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -122,6 +123,21 @@ class ProfileScreen extends StatelessWidget {
                   },
                 ),
                 
+                if (userId != null)
+                  _buildMenuTile(
+                    context,
+                    icon: Icons.two_wheeler,
+                    title: 'Xe của tôi',
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => MyVehiclesScreen(userId: userId),
+                        ),
+                      );
+                    },
+                  ),
+
                 _buildMenuTile(
                   context,
                   icon: Icons.settings,
