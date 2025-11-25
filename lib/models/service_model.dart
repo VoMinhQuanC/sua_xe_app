@@ -26,7 +26,7 @@ class ServiceModel {
           ? double.parse(json['Price'].toString()) 
           : 0.0,
       estimatedTime: json['EstimatedTime'] ?? json['estimatedTime'] ?? 0,
-      imageUrl: json['ImageUrl'] ?? json['imageUrl'],
+      imageUrl: json['ServiceImage'] ?? json['ImageUrl'] ?? json['imageUrl'],
       isActive: json['IsActive'] == 1 || json['isActive'] == true,
     );
   }

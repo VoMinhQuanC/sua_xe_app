@@ -12,7 +12,7 @@ class ApiConfig {
   /// - 'https://your-project.appspot.com'
   /// - 'https://your-backend-url.run.app'
   /// - 'http://localhost:3000' (cho development)
-  static const String baseUrl = 'https://suaxe-api-2.as.r.appspot.com';
+  static const String baseUrl = 'https://suaxeweb-production.up.railway.app';
   
   /// Có sử dụng /api prefix hay không
   static const bool useApiPrefix = true;

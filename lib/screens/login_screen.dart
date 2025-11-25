@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../main.dart';
 import 'Technician/technician_main_page.dart';
 import 'register_screen.dart';
@@ -35,6 +36,11 @@ class _LoginScreenState extends State<LoginScreen> {
           final token = res.data['token'] ?? res.data['accessToken'] ?? res.data['data']?['token'];
           if (token != null) {
             await api.saveToken(token.toString());
+            
+            // ✅ LƯU TOKEN VÀO FLUTTER_SECURE_STORAGE
+            const storage = FlutterSecureStorage();
+            await storage.write(key: 'auth_token', value: token.toString());
+            print('✅ Đã lưu token vào SecureStorage (Google)');
           }
           
           // ✅ FIX: Lưu userId và user info - Lấy từ user.id
@@ -125,7 +131,10 @@ class _LoginScreenState extends State<LoginScreen> {
         final token = res.data['token'] ?? res.data['accessToken'] ?? res.data['data']?['token'];
         if (token != null) {
           await api.saveToken(token.toString());
-          print('✅ Đã lưu token');
+          // ✅ LƯU TOKEN VÀO FLUTTER_SECURE_STORAGE
+          const storage = FlutterSecureStorage();
+          await storage.write(key: 'auth_token', value: token.toString());
+          print('✅ Đã lưu token vào SecureStorage');
         }
         
         // ✅ FIX: LẤY userId - ƯU TIÊN từ user.id

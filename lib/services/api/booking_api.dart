@@ -6,7 +6,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 class BookingApiService {
   // ✅ FIX 1: Đổi URL sang suaxe-api-2
-  static const String baseUrl = 'https://suaxe-api-2.as.r.appspot.com';
+  static const String baseUrl = 'https://suaxeweb-production.up.railway.app';
   
   static const _secureStorage = FlutterSecureStorage();
   

@@ -6,7 +6,7 @@ class ApiService {
   final FlutterSecureStorage _storage = const FlutterSecureStorage();
 
   /// Thay giá trị này bằng URL API đã deploy của bạn (ví dụ https://PROJECT_ID.uc.r.appspot.com)
-  static const String baseUrl = 'https://suaxe-api-2.as.r.appspot.com'; // <-- chỉnh lại
+  static const String baseUrl = 'https://suaxeweb-production.up.railway.app'; // <-- chỉnh lại
 
   ApiService._internal(this._dio);
 
