@@ -106,8 +106,6 @@ class BookingModel {
         return 'Chờ xác nhận';
       case 'Confirmed':
         return 'Đã xác nhận';
-      case 'In Progress':
-        return 'Đang thực hiện';
       case 'Completed':
         return 'Hoàn thành';
       case 'Cancelled':
@@ -125,8 +123,6 @@ class BookingModel {
         return '#FF9800'; // Cam đậm
       case 'Confirmed':
         return '#4CAF50'; // Xanh lá
-      case 'In Progress':
-        return '#2196F3'; // Xanh dương
       case 'Completed':
         return '#00897B'; // Xanh ngọc Material
       case 'Cancelled':

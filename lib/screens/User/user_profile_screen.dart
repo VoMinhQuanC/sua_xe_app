@@ -30,6 +30,7 @@ class ProfileScreen extends StatelessWidget {
           final userName = userInfo?['name'] ?? 'Người dùng';
           final userEmail = userInfo?['email'] ?? '';
           final userId = userInfo?['userId'];
+          final avatarUrl = userInfo?['avatarUrl'];
           
           return SingleChildScrollView(
             child: Column(
@@ -47,14 +48,19 @@ class ProfileScreen extends StatelessWidget {
                   ),
                   child: Column(
                     children: [
-                      const CircleAvatar(
+                       CircleAvatar(
                         radius: 50,
                         backgroundColor: Colors.white,
-                        child: Icon(
-                          Icons.person,
-                          size: 50,
-                          color: Colors.redAccent,
-                        ),
+                        backgroundImage: avatarUrl != null && avatarUrl.isNotEmpty
+                            ? NetworkImage('https://suaxeweb-production.up.railway.app/$avatarUrl') // ← URL backend
+                            : null,
+                        child: avatarUrl == null || avatarUrl.isEmpty
+                            ? const Icon(
+                                Icons.person,
+                                size: 50,
+                                color: Colors.redAccent,
+                              )
+                            : null,
                       ),
                       const SizedBox(height: 16),
                       Text(

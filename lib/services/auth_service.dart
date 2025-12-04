@@ -15,8 +15,10 @@ class AuthService {
   static const String _keyAuthToken = 'auth_token';
   static const String _keyUserEmail = 'user_email';
   static const String _keyUserName = 'user_name';
+  static const String _keyUserPhone = 'user_phone';
   static const String _keyUserRole = 'user_role';
   static const String _keyIsLoggedIn = 'is_logged_in';
+  static const String _keyUserAvatar = 'user_avatar';
 
   // Secure storage for sensitive data (token)
   final _secureStorage = const FlutterSecureStorage();
@@ -100,6 +102,8 @@ class AuthService {
     required String email,
     required String name,
     int? roleId,
+    String? phoneNumber,
+    String? avatarUrl,
   }) async {
     final prefs = await _getPrefs();
     
@@ -114,6 +118,14 @@ class AuthService {
     }
     if (roleId != null) {
       await prefs.setInt(_keyUserRole, roleId);
+    }
+    // ← THÊM ĐOẠN NÀY
+    if (phoneNumber != null && phoneNumber.isNotEmpty) {
+      await prefs.setString('user_phone', phoneNumber);
+    }
+
+    if (avatarUrl != null && avatarUrl.isNotEmpty) {
+      await prefs.setString(_keyUserAvatar, avatarUrl);
     }
     
     // ✅ Force commit
@@ -144,6 +156,8 @@ class AuthService {
       'userId': userId,
       'email': prefs.getString(_keyUserEmail) ?? '',
       'name': prefs.getString(_keyUserName) ?? 'Khách hàng',
+      'phone': prefs.getString('user_phone') ?? '',
+      'avatarUrl': prefs.getString(_keyUserAvatar),
       'roleId': prefs.getInt(_keyUserRole),
     };
   }

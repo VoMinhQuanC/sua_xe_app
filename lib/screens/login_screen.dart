@@ -56,11 +56,11 @@ class _LoginScreenState extends State<LoginScreen> {
             
             await AuthService.saveUserInfo(
               userId: userId is int ? userId : int.parse(userId.toString()),
-              email: res.data['user']?['email'] ??      // ← FIX: Lấy từ user.email
-                     res.data['email'] ?? 
-                     userCredential.user!.email ?? 
-                     '',
-              name: res.data['user']?['fullName'] ??    // ← FIX: Lấy từ user.fullName
+              email: res.data['user']?['email'] ??
+                    res.data['email'] ?? 
+                    userCredential.user!.email ?? 
+                    '',
+              name: res.data['user']?['fullName'] ??
                     res.data['fullName'] ?? 
                     res.data['name'] ?? 
                     res.data['FullName'] ??
@@ -68,9 +68,15 @@ class _LoginScreenState extends State<LoginScreen> {
                     res.data['data']?['FullName'] ??
                     userCredential.user!.displayName ?? 
                     'Khách hàng',
-              roleId: res.data['user']?['role'] ??      // ← FIX: Lấy từ user.role
+              roleId: res.data['user']?['role'] ??
                       res.data['roleId'] ?? 
                       res.data['role'],
+              phoneNumber: res.data['user']?['phoneNumber'] ??  // ← THÊM
+                          res.data['phoneNumber'],
+              avatarUrl: res.data['user']?['avatarUrl'] ??      // ← THÊM
+                        res.data['user']?['ProfilePicture'] ??
+                        res.data['avatarUrl'] ??
+                        res.data['ProfilePicture'],
             );
             
             // ✅ Debug: In ra thông tin đã lưu
@@ -160,23 +166,30 @@ class _LoginScreenState extends State<LoginScreen> {
           // ✅ FIX: Lưu thông tin user đầy đủ - ƯU TIÊN từ user.*
           await AuthService.saveUserInfo(
             userId: userId is int ? userId : int.parse(userId.toString()),
-            email: res.data['user']?['email'] ??        // ← FIX: Thêm user.email
-                   res.data['email'] ?? 
-                   res.data['Email'] ??
-                   res.data['data']?['email'] ?? 
-                   '',
-            name: res.data['user']?['fullName'] ??      // ← FIX: Thêm user.fullName
+            email: res.data['user']?['email'] ??
+                  res.data['email'] ?? 
+                  res.data['Email'] ??
+                  res.data['data']?['email'] ?? 
+                  '',
+            name: res.data['user']?['fullName'] ??
                   res.data['fullName'] ?? 
                   res.data['FullName'] ??
                   res.data['name'] ?? 
                   res.data['data']?['fullName'] ?? 
                   res.data['data']?['FullName'] ?? 
                   'Khách hàng',
-            roleId: res.data['user']?['role'] ??        // ← FIX: Thêm user.role
+            roleId: res.data['user']?['role'] ??
                     res.data['roleId'] ?? 
                     res.data['RoleID'] ??
                     res.data['role'] ?? 
                     res.data['data']?['roleId'],
+            phoneNumber: res.data['user']?['phoneNumber'] ??  // ← THÊM
+                        res.data['phoneNumber'] ??
+                        res.data['PhoneNumber'],
+            avatarUrl: res.data['user']?['avatarUrl'] ??      // ← THÊM
+                      res.data['user']?['ProfilePicture'] ??
+                      res.data['avatarUrl'] ??
+                      res.data['ProfilePicture'],
           );
           
           // ✅ Debug: Kiểm tra lại thông tin đã lưu
@@ -240,6 +253,8 @@ class _LoginScreenState extends State<LoginScreen> {
           email: 'admin@localhost',
           name: 'Admin',
           roleId: 1,
+          phoneNumber: '0900000000',     // ← THÊM
+          avatarUrl: null,                // ← THÊM
         );
         
         if (!mounted) return;
