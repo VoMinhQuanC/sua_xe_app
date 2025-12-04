@@ -1,3 +1,5 @@
+// lib/screens/login_screen.dart
+
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -21,6 +23,76 @@ class _LoginScreenState extends State<LoginScreen> {
   final GoogleSignInService _googleSignInService = GoogleSignInService();
   bool _loading = false;
   bool _googleLoading = false;
+  final storage = const FlutterSecureStorage();
+  bool _rememberMe = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSavedCredentials();
+  }
+
+  /// Load thông tin đăng nhập đã lưu
+  Future<void> _loadSavedCredentials() async {
+    try {
+      final savedUsername = await storage.read(key: 'saved_username');
+      final savedPassword = await storage.read(key: 'saved_password');
+      final rememberMe = await storage.read(key: 'remember_me');
+      
+      if (savedUsername != null && savedPassword != null && rememberMe == 'true') {
+        setState(() {
+          _usernameController.text = savedUsername;
+          _passwordController.text = savedPassword;
+          _rememberMe = true;
+        });
+        print('✅ Đã load thông tin đăng nhập đã lưu');
+      }
+    } catch (e) {
+      print('❌ Lỗi load credentials: $e');
+    }
+  }
+
+  /// Lưu thông tin đăng nhập
+  Future<void> _saveCredentials() async {
+    if (_rememberMe) {
+      await storage.write(key: 'saved_username', value: _usernameController.text.trim());
+      await storage.write(key: 'saved_password', value: _passwordController.text.trim());
+      await storage.write(key: 'remember_me', value: 'true');
+      print('✅ Đã lưu thông tin đăng nhập');
+    } else {
+      await storage.delete(key: 'saved_username');
+      await storage.delete(key: 'saved_password');
+      await storage.delete(key: 'remember_me');
+      print('🗑️ Đã xóa thông tin đăng nhập đã lưu');
+    }
+  }
+
+  /// ✅ THÊM: Helper navigate dựa theo role
+  Future<void> _navigateBasedOnRole() async {
+    // Lấy roleId từ AuthService
+    final userInfo = await AuthService.getUserInfo();
+    final roleId = userInfo?['roleId'];
+    
+    print('🔍 RoleID: $roleId');
+    
+    if (!mounted) return;
+    
+    // RoleID = 3 → Mechanic/Technician
+    if (roleId == 3) {
+      print('✅ Navigate đến TechnicianMainPage (Mechanic)');
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const TechnicianMainPage()),
+      );
+    } else {
+      // RoleID khác → User
+      print('✅ Navigate đến MainPage (User)');
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const MainPage()),
+      );
+    }
+  }
 
   Future<void> _handleGoogleSignIn() async {
     setState(() => _googleLoading = true);
@@ -35,23 +107,20 @@ class _LoginScreenState extends State<LoginScreen> {
         if (res.statusCode == 200 && res.data != null) {
           final token = res.data['token'] ?? res.data['accessToken'] ?? res.data['data']?['token'];
           if (token != null) {
-
-            
-            // ✅ LƯU TOKEN VÀO FLUTTER_SECURE_STORAGE
+            // Lưu token vào SecureStorage
             const storage = FlutterSecureStorage();
             await storage.write(key: 'auth_token', value: token.toString());
             print('✅ Đã lưu token vào SecureStorage (Google)');
           }
           
-          // ✅ FIX: Lưu userId và user info - Lấy từ user.id
-          final userId = res.data['user']?['id'] ??     // ← FIX: Thêm user.id
+          // Lưu userId và user info
+          final userId = res.data['user']?['id'] ??
                          res.data['userId'] ??
                          res.data['UserID'] ??
                          res.data['user_id'] ??
                          res.data['id'];
           
           if (userId != null) {
-            // ✅ QUAN TRỌNG: Lưu userId riêng trước
             await AuthService.saveUserId(userId is int ? userId : int.parse(userId.toString()));
             
             await AuthService.saveUserInfo(
@@ -71,24 +140,21 @@ class _LoginScreenState extends State<LoginScreen> {
               roleId: res.data['user']?['role'] ??
                       res.data['roleId'] ?? 
                       res.data['role'],
-              phoneNumber: res.data['user']?['phoneNumber'] ??  // ← THÊM
+              phoneNumber: res.data['user']?['phoneNumber'] ??
                           res.data['phoneNumber'],
-              avatarUrl: res.data['user']?['avatarUrl'] ??      // ← THÊM
+              avatarUrl: res.data['user']?['avatarUrl'] ??
                         res.data['user']?['ProfilePicture'] ??
                         res.data['avatarUrl'] ??
                         res.data['ProfilePicture'],
             );
             
-            // ✅ Debug: In ra thông tin đã lưu
             print('🔍 Debug sau khi đăng nhập Google:');
             await AuthService.debugPrintUserInfo();
           }
           
+          // ✅ FIX: Navigate dựa theo role
           if (!mounted) return;
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (context) => const MainPage()),
-          );
+          await _navigateBasedOnRole();
           return;
         }
       }
@@ -137,14 +203,13 @@ class _LoginScreenState extends State<LoginScreen> {
         final token = res.data['token'] ?? res.data['accessToken'] ?? res.data['data']?['token'];
         if (token != null) {
           await api.saveToken(token.toString());
-          // ✅ LƯU TOKEN VÀO FLUTTER_SECURE_STORAGE
           const storage = FlutterSecureStorage();
           await storage.write(key: 'auth_token', value: token.toString());
           print('✅ Đã lưu token vào SecureStorage');
         }
         
-        // ✅ FIX: LẤY userId - ƯU TIÊN từ user.id
-        final userId = res.data['user']?['id'] ??        // ← FIX: THÊM DÒNG NÀY Ở ĐẦU
+        // Lấy userId
+        final userId = res.data['user']?['id'] ??
                        res.data['userId'] ?? 
                        res.data['UserID'] ?? 
                        res.data['user_id'] ??
@@ -157,13 +222,20 @@ class _LoginScreenState extends State<LoginScreen> {
         if (userId != null) {
           print('⏳ Đang lưu userId: $userId');
           
-          // ✅ QUAN TRỌNG: Lưu userId và đợi hoàn tất
           await AuthService.saveUserId(userId is int ? userId : int.parse(userId.toString()));
-          
-          // ✅ Đợi một chút để đảm bảo dữ liệu được lưu
           await Future.delayed(const Duration(milliseconds: 100));
           
-          // ✅ FIX: Lưu thông tin user đầy đủ - ƯU TIÊN từ user.*
+          // ✅ QUAN TRỌNG: Lưu roleId từ response
+          final roleId = res.data['user']?['role'] ??
+                        res.data['user']?['roleId'] ??
+                        res.data['user']?['RoleID'] ??
+                        res.data['roleId'] ?? 
+                        res.data['RoleID'] ??
+                        res.data['role'] ?? 
+                        res.data['data']?['roleId'];
+          
+          print('🔍 roleId từ API: $roleId');
+          
           await AuthService.saveUserInfo(
             userId: userId is int ? userId : int.parse(userId.toString()),
             email: res.data['user']?['email'] ??
@@ -178,25 +250,20 @@ class _LoginScreenState extends State<LoginScreen> {
                   res.data['data']?['fullName'] ?? 
                   res.data['data']?['FullName'] ?? 
                   'Khách hàng',
-            roleId: res.data['user']?['role'] ??
-                    res.data['roleId'] ?? 
-                    res.data['RoleID'] ??
-                    res.data['role'] ?? 
-                    res.data['data']?['roleId'],
-            phoneNumber: res.data['user']?['phoneNumber'] ??  // ← THÊM
+            roleId: roleId,
+            phoneNumber: res.data['user']?['phoneNumber'] ??
                         res.data['phoneNumber'] ??
                         res.data['PhoneNumber'],
-            avatarUrl: res.data['user']?['avatarUrl'] ??      // ← THÊM
+            avatarUrl: res.data['user']?['avatarUrl'] ??
                       res.data['user']?['ProfilePicture'] ??
                       res.data['avatarUrl'] ??
                       res.data['ProfilePicture'],
           );
           
-          // ✅ Debug: Kiểm tra lại thông tin đã lưu
+          // Debug: Kiểm tra lại thông tin đã lưu
           print('🔍 Debug sau khi lưu thông tin:');
           await AuthService.debugPrintUserInfo();
           
-          // ✅ Kiểm tra lại userId trước khi navigate
           final savedUserId = await AuthService.getUserId();
           print('🔍 userId sau khi lưu: $savedUserId');
           
@@ -212,7 +279,6 @@ class _LoginScreenState extends State<LoginScreen> {
         
         if (!mounted) return;
         
-        // ✅ Hiển thị thông báo thành công trước khi navigate
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Đăng nhập thành công!'),
@@ -221,14 +287,13 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
         );
         
-        // ✅ Đợi một chút trước khi navigate
+        
+        // Lưu thông tin đăng nhập nếu checkbox được chọn
+        await _saveCredentials();
         await Future.delayed(const Duration(milliseconds: 500));
         
-        // Navigate về trang chủ
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => const MainPage()),
-        );
+        // ✅ FIX: Navigate dựa theo role
+        await _navigateBasedOnRole();
         return;
       }
       
@@ -242,28 +307,6 @@ class _LoginScreenState extends State<LoginScreen> {
       );
     } catch (e) {
       print('❌ Lỗi khi đăng nhập: $e');
-      
-      // Fallback local cho testing
-      if (username == "admin" && password == "123") {
-        print('📌 Sử dụng admin local');
-        await AuthService.saveUserId(1);
-        await Future.delayed(const Duration(milliseconds: 100));
-        await AuthService.saveUserInfo(
-          userId: 1,
-          email: 'admin@localhost',
-          name: 'Admin',
-          roleId: 1,
-          phoneNumber: '0900000000',     // ← THÊM
-          avatarUrl: null,                // ← THÊM
-        );
-        
-        if (!mounted) return;
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => const MainPage()),
-        );
-        return;
-      }
       
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -307,6 +350,8 @@ class _LoginScreenState extends State<LoginScreen> {
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
+                  filled: true,
+                  fillColor: Colors.white,
                 ),
               ),
               const SizedBox(height: 16),
@@ -321,104 +366,112 @@ class _LoginScreenState extends State<LoginScreen> {
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
+                  filled: true,
+                  fillColor: Colors.white,
                 ),
               ),
               const SizedBox(height: 24),
+              
+              // Remember Me Checkbox
+              Row(
+                children: [
+                  Checkbox(
+                    value: _rememberMe,
+                    onChanged: (value) {
+                      setState(() {
+                        _rememberMe = value ?? false;
+                      });
+                    },
+                    activeColor: Colors.redAccent,
+                  ),
+                  GestureDetector(
+                    onTap: () {
+                      setState(() {
+                        _rememberMe = !_rememberMe;
+                      });
+                    },
+                    child: const Text(
+                      'Ghi nhớ đăng nhập',
+                      style: TextStyle(fontSize: 14, color: Colors.black87),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
 
-              // Login button
+              // Login Button
               SizedBox(
                 width: double.infinity,
                 height: 50,
                 child: ElevatedButton(
+                  onPressed: _loading ? null : _login,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.redAccent,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
                   ),
-                  onPressed: _loading ? null : _login,
                   child: _loading
-                      ? const SizedBox(
-                          height: 20,
-                          width: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                          ),
-                        )
+                      ? const CircularProgressIndicator(color: Colors.white)
                       : const Text(
                           "Đăng nhập",
-                          style: TextStyle(fontSize: 18, color: Colors.white),
+                          style: TextStyle(fontSize: 16, color: Colors.white),
                         ),
                 ),
               ),
-              const SizedBox(height: 12),
-              
-              // Divider with "hoặc" text
+              const SizedBox(height: 16),
+
+              // Divider
               Row(
-                children: const [
-                  Expanded(child: Divider()),
-                  Padding(
+                children: [
+                  Expanded(child: Divider(color: Colors.grey[400])),
+                  const Padding(
                     padding: EdgeInsets.symmetric(horizontal: 16),
-                    child: Text("hoặc"),
+                    child: Text("Hoặc"),
                   ),
-                  Expanded(child: Divider()),
+                  Expanded(child: Divider(color: Colors.grey[400])),
                 ],
               ),
-              
-              const SizedBox(height: 12),
-              
-              // Google Sign In button
+              const SizedBox(height: 16),
+
+              // Google Sign In
               SizedBox(
                 width: double.infinity,
                 height: 50,
                 child: OutlinedButton.icon(
+                  onPressed: _googleLoading ? null : _handleGoogleSignIn,
+                  icon: _googleLoading
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const FaIcon(FontAwesomeIcons.google, size: 20),
+                  label: const Text("Đăng nhập với Google"),
                   style: OutlinedButton.styleFrom(
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    foregroundColor: Colors.black87,
-                  ),
-                  onPressed: _googleLoading ? null : _handleGoogleSignIn,
-                  icon: _googleLoading
-                      ? const SizedBox(
-                          height: 20,
-                          width: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                          ),
-                        )
-                      : const FaIcon(
-                          FontAwesomeIcons.google,
-                          color: Colors.red,
-                        ),
-                  label: const Text(
-                    "Đăng nhập bằng Google",
-                    style: TextStyle(fontSize: 16),
+                    side: const BorderSide(color: Colors.grey),
                   ),
                 ),
               ),
+              const SizedBox(height: 24),
 
-              const SizedBox(height: 12),
-
+              // Register Link
               Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  TextButton(
-                    onPressed: () {},
-                    child: const Text("Quên mật khẩu?"),
-                  ),
-                  TextButton(
-                    onPressed: () {
+                  const Text("Chưa có tài khoản? "),
+                  GestureDetector(
+                    onTap: () {
                       Navigator.push(
                         context,
-                        MaterialPageRoute(
-                          builder: (context) => const RegisterScreen(),
-                        ),
+                        MaterialPageRoute(builder: (context) => const RegisterScreen()),
                       );
                     },
                     child: const Text(
-                      "Đăng ký",
+                      "Đăng ký ngay",
                       style: TextStyle(
                         color: Colors.redAccent,
                         fontWeight: FontWeight.bold,

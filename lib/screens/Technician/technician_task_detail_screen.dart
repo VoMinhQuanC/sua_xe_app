@@ -1,66 +1,167 @@
+// lib/screens/Technician/technician_task_detail_screen.dart
+
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:intl/intl.dart';
+import 'package:suaxe_app/models/booking_model.dart';
+import 'package:suaxe_app/services/api/mechanic_api_service.dart';
 
 class TechnicianTaskDetailScreen extends StatefulWidget {
-  final Map<String, dynamic> task;
+  final int appointmentId;
 
-  const TechnicianTaskDetailScreen({super.key, required this.task});
+  const TechnicianTaskDetailScreen({
+    super.key,
+    required this.appointmentId,
+  });
 
   @override
   State<TechnicianTaskDetailScreen> createState() => _TechnicianTaskDetailScreenState();
 }
 
 class _TechnicianTaskDetailScreenState extends State<TechnicianTaskDetailScreen> {
-  late String _currentStatus;
+  bool _isLoading = false;
+  BookingModel? _appointment;
 
   @override
   void initState() {
     super.initState();
-    _currentStatus = widget.task['status'];
+    _loadAppointmentDetail();
   }
 
-  Color _getStatusColor(String status) {
-    switch (status) {
-      case 'Đang chờ':
-        return Colors.orange;
-      case 'Đang làm':
-        return Colors.blue;
-      case 'Hoàn thành':
-        return Colors.green;
-      default:
-        return Colors.grey;
+  /// Tải chi tiết lịch hẹn
+  Future<void> _loadAppointmentDetail() async {
+    setState(() => _isLoading = true);
+    
+    try {
+      // Lấy tất cả appointments và tìm theo ID
+      final appointments = await MechanicApiService.getMyAppointments();
+      final appointment = appointments.firstWhere(
+        (a) => a.appointmentId == widget.appointmentId,
+        orElse: () => throw Exception('Không tìm thấy lịch hẹn'),
+      );
+      
+      setState(() {
+        _appointment = appointment;
+      });
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Lỗi khi tải chi tiết: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        Navigator.pop(context);
+      }
+    } finally {
+      setState(() => _isLoading = false);
     }
   }
 
-  void _updateStatus(String newStatus) {
-    setState(() {
-      _currentStatus = newStatus;
-    });
-    
-    // Có thể gọi API để cập nhật trạng thái
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Đã cập nhật trạng thái: $newStatus'),
-        backgroundColor: Colors.green,
-        duration: const Duration(seconds: 2),
+  /// Cập nhật trạng thái công việc
+  Future<void> _updateStatus(String newStatus) async {
+    // Xác nhận trước khi cập nhật
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Xác nhận'),
+        content: Text('Bạn có chắc muốn cập nhật trạng thái thành "${_getStatusLabel(newStatus)}"?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Hủy'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.redAccent,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Xác nhận'),
+          ),
+        ],
       ),
     );
 
-    // Cập nhật lại widget.task để truyền về màn hình trước
-    widget.task['status'] = newStatus;
+    if (confirm != true) return;
+
+    setState(() => _isLoading = true);
+    
+    try {
+      await MechanicApiService.updateAppointmentStatus(
+        appointmentId: widget.appointmentId,
+        status: newStatus,
+      );
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Cập nhật trạng thái thành công'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+      
+      // Reload
+      await _loadAppointmentDetail();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Lỗi: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      setState(() => _isLoading = false);
+    }
   }
 
-  void _showStatusDialog() {
-    showDialog(
+  /// Mở dialog chọn trạng thái mới
+  Future<void> _showUpdateStatusDialog() async {
+    if (_appointment == null) return;
+
+    final currentStatus = _appointment!.status;
+    String? selectedStatus;
+
+    // Xác định các trạng thái có thể chuyển đổi
+    List<String> availableStatuses = [];
+    if (currentStatus == 'Pending') {
+      availableStatuses = ['Confirmed', 'Canceled'];
+    } else if (currentStatus == 'Confirmed') {
+      availableStatuses = ['Completed', 'Canceled'];
+    }
+
+    if (availableStatuses.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Không thể thay đổi trạng thái của công việc này'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    await showDialog(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Cập nhật trạng thái'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
-          children: [
-            _buildStatusOption('Đang chờ', Colors.orange),
-            _buildStatusOption('Đang làm', Colors.blue),
-            _buildStatusOption('Hoàn thành', Colors.green),
-          ],
+          children: availableStatuses.map((status) {
+            return RadioListTile<String>(
+              title: Text(_getStatusLabel(status)),
+              value: status,
+              groupValue: selectedStatus,
+              onChanged: (value) {
+                Navigator.pop(context);
+                if (value != null) {
+                  _updateStatus(value);
+                }
+              },
+            );
+          }).toList(),
         ),
         actions: [
           TextButton(
@@ -72,47 +173,60 @@ class _TechnicianTaskDetailScreenState extends State<TechnicianTaskDetailScreen>
     );
   }
 
-  Widget _buildStatusOption(String status, Color color) {
-    final isSelected = _currentStatus == status;
-    return ListTile(
-      leading: Container(
-        width: 24,
-        height: 24,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: isSelected ? color : Colors.transparent,
-          border: Border.all(color: color, width: 2),
-        ),
-        child: isSelected
-            ? const Icon(Icons.check, color: Colors.white, size: 16)
-            : null,
-      ),
-      title: Text(status),
-      onTap: () {
-        _updateStatus(status);
-        Navigator.pop(context);
-      },
-    );
+  String _getStatusLabel(String status) {
+    switch (status) {
+      case 'Pending':
+        return 'Chờ xác nhận';
+      case 'Confirmed':
+        return 'Đã xác nhận';
+      case 'Completed':
+        return 'Hoàn thành';
+      case 'Canceled':
+        return 'Đã hủy';
+      default:
+        return status;
+    }
   }
 
-  void _callCustomer() {
-    // Có thể sử dụng url_launcher để gọi điện
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Đang gọi ${widget.task['phone']}...'),
-        duration: const Duration(seconds: 2),
-      ),
-    );
+  /// Gọi điện cho khách hàng
+  Future<void> _callCustomer() async {
+    if (_appointment?.phoneNumber == null) return;
+    
+    final phoneNumber = _appointment!.phoneNumber!;
+    final uri = Uri.parse('tel:$phoneNumber');
+    
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri);
+    } else {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Không thể thực hiện cuộc gọi'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
-  void _openMap() {
-    // Có thể sử dụng google_maps_flutter để mở bản đồ
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Đang mở bản đồ...'),
-        duration: Duration(seconds: 2),
-      ),
-    );
+  /// Mở bản đồ
+  Future<void> _openMap() async {
+    // Giả định có địa chỉ trong notes hoặc thông tin khách hàng
+    final address = _appointment?.notes ?? 'Địa chỉ khách hàng';
+    final uri = Uri.parse('https://www.google.com/maps/search/?api=1&query=${Uri.encodeComponent(address)}');
+    
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } else {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Không thể mở bản đồ'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   @override
@@ -125,195 +239,193 @@ class _TechnicianTaskDetailScreenState extends State<TechnicianTaskDetailScreen>
           style: TextStyle(color: Colors.white),
         ),
         iconTheme: const IconThemeData(color: Colors.white),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh, color: Colors.white),
+            onPressed: _loadAppointmentDetail,
+          ),
+        ],
       ),
-      body: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Header với trạng thái
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: _getStatusColor(_currentStatus).withOpacity(0.1),
-                border: Border(
-                  bottom: BorderSide(
-                    color: _getStatusColor(_currentStatus),
-                    width: 3,
-                  ),
-                ),
-              ),
-              child: Column(
-                children: [
-                  Text(
-                    _currentStatus.toUpperCase(),
-                    style: TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      color: _getStatusColor(_currentStatus),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Mã đơn: #${widget.task['id']}',
-                    style: TextStyle(
-                      color: Colors.grey[700],
-                      fontSize: 14,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            // Thông tin khách hàng
-            _buildSection(
-              title: 'Thông tin khách hàng',
-              icon: Icons.person,
-              children: [
-                _buildInfoRow('Tên khách hàng', widget.task['customerName']),
-                _buildInfoRow(
-                  'Số điện thoại',
-                  widget.task['phone'],
-                  trailing: IconButton(
-                    icon: const Icon(Icons.phone, color: Colors.redAccent),
-                    onPressed: _callCustomer,
-                  ),
-                ),
-              ],
-            ),
-
-            // Thông tin dịch vụ
-            _buildSection(
-              title: 'Dịch vụ',
-              icon: Icons.build,
-              children: [
-                _buildInfoRow('Loại dịch vụ', widget.task['service']),
-                _buildInfoRow('Độ ưu tiên', widget.task['priority']),
-                _buildInfoRow('Thời gian', widget.task['time']),
-              ],
-            ),
-
-            // Thông tin xe
-            _buildSection(
-              title: 'Thông tin xe',
-              icon: Icons.two_wheeler,
-              children: [
-                _buildInfoRow('Loại xe', widget.task['vehicle']),
-                _buildInfoRow('Biển số', widget.task['licensePlate']),
-              ],
-            ),
-
-            // Địa chỉ
-            _buildSection(
-              title: 'Địa chỉ',
-              icon: Icons.location_on,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                  child: Row(
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : _appointment == null
+              ? const Center(child: Text('Không tìm thấy thông tin'))
+              : SingleChildScrollView(
+                  child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Expanded(
-                        child: Text(
-                          widget.task['address'],
-                          style: const TextStyle(fontSize: 16),
+                      // Header với status
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(20),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              _getStatusColor(_appointment!.status),
+                              _getStatusColor(_appointment!.status).withOpacity(0.7),
+                            ],
+                          ),
+                        ),
+                        child: Column(
+                          children: [
+                            Icon(
+                              _getStatusIcon(_appointment!.status),
+                              size: 48,
+                              color: Colors.white,
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              _appointment!.statusInVietnamese,
+                              style: const TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              _formatDateTime(_appointment!.appointmentDate),
+                              style: const TextStyle(
+                                fontSize: 14,
+                                color: Colors.white70,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                      IconButton(
-                        icon: const Icon(Icons.map, color: Colors.redAccent),
-                        onPressed: _openMap,
+
+                      // Thông tin khách hàng
+                      _buildSection(
+                        icon: Icons.person,
+                        title: 'Thông tin khách hàng',
+                        children: [
+                          _buildInfoRow('Họ tên', _appointment!.fullName ?? 'N/A'),
+                          _buildInfoRow('Số điện thoại', _appointment!.phoneNumber ?? 'N/A'),
+                          _buildInfoRow('Email', _appointment!.email ?? 'N/A'),
+                        ],
                       ),
+
+                      // Thông tin xe
+                      _buildSection(
+                        icon: Icons.two_wheeler,
+                        title: 'Thông tin xe',
+                        children: [
+                          _buildInfoRow('Biển số', _appointment!.licensePlate ?? 'N/A'),
+                          _buildInfoRow('Hãng xe', _appointment!.brand ?? 'N/A'),
+                          _buildInfoRow('Model', _appointment!.model ?? 'N/A'),
+                          if (_appointment!.year != null)
+                            _buildInfoRow('Năm sản xuất', _appointment!.year.toString()),
+                        ],
+                      ),
+
+                      // Dịch vụ
+                      _buildSection(
+                        icon: Icons.build_circle,
+                        title: 'Dịch vụ yêu cầu',
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 8),
+                            child: Text(
+                              _appointment!.services ?? 'Không có dịch vụ',
+                              style: const TextStyle(fontSize: 16),
+                            ),
+                          ),
+                        ],
+                      ),
+
+                      // Ghi chú
+                      if (_appointment!.notes != null && _appointment!.notes!.isNotEmpty)
+                        _buildSection(
+                          icon: Icons.note,
+                          title: 'Ghi chú',
+                          children: [
+                            Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 8),
+                              child: Text(
+                                _appointment!.notes!,
+                                style: TextStyle(
+                                  fontSize: 15,
+                                  color: Colors.grey[700],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+
+                      const SizedBox(height: 80),
                     ],
                   ),
                 ),
-              ],
-            ),
-
-            // Ghi chú
-            if (widget.task['notes'].toString().isNotEmpty)
-              _buildSection(
-                title: 'Ghi chú',
-                icon: Icons.note,
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                    child: Text(
-                      widget.task['notes'],
-                      style: TextStyle(
-                        fontSize: 16,
-                        color: Colors.grey[800],
-                        height: 1.5,
-                      ),
-                    ),
-                  ),
-                ],
-            ),
-
-            // Nút hành động
-            Padding(
+      bottomNavigationBar: _appointment != null
+          ? Container(
               padding: const EdgeInsets.all(16),
-              child: Column(
-                children: [
-                  SizedBox(
-                    width: double.infinity,
-                    height: 50,
-                    child: ElevatedButton.icon(
-                      onPressed: _showStatusDialog,
-                      icon: const Icon(Icons.update, color: Colors.white),
-                      label: const Text(
-                        'Cập nhật trạng thái',
-                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                      ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.redAccent,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                    ),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.1),
+                    blurRadius: 4,
+                    offset: const Offset(0, -2),
                   ),
-                  const SizedBox(height: 12),
-                  if (_currentStatus == 'Đang làm')
-                    SizedBox(
-                      width: double.infinity,
-                      height: 50,
-                      child: OutlinedButton.icon(
-                        onPressed: () {
-                          _updateStatus('Hoàn thành');
-                        },
-                        icon: const Icon(Icons.check_circle, color: Colors.green),
-                        label: const Text(
-                          'Hoàn thành công việc',
-                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                        ),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: Colors.green,
-                          side: const BorderSide(color: Colors.green, width: 2),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                      ),
-                    ),
                 ],
               ),
-            ),
-
-            const SizedBox(height: 20),
-          ],
-        ),
-      ),
+              child: Row(
+                children: [
+                  // Gọi điện
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: _callCustomer,
+                      icon: const Icon(Icons.phone),
+                      label: const Text('Gọi'),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        foregroundColor: Colors.green,
+                        side: const BorderSide(color: Colors.green),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  // Mở bản đồ
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: _openMap,
+                      icon: const Icon(Icons.map),
+                      label: const Text('Bản đồ'),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        foregroundColor: Colors.blue,
+                        side: const BorderSide(color: Colors.blue),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  // Cập nhật trạng thái
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: _showUpdateStatusDialog,
+                      icon: const Icon(Icons.update),
+                      label: const Text('Cập nhật'),
+                      style: ElevatedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        backgroundColor: Colors.redAccent,
+                        foregroundColor: Colors.white,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            )
+          : null,
     );
   }
 
   Widget _buildSection({
-    required String title,
     required IconData icon,
+    required String title,
     required List<Widget> children,
   }) {
     return Container(
       margin: const EdgeInsets.all(16),
-      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
@@ -328,29 +440,38 @@ class _TechnicianTaskDetailScreenState extends State<TechnicianTaskDetailScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Icon(icon, color: Colors.redAccent, size: 24),
-              const SizedBox(width: 8),
-              Text(
-                title,
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                Icon(icon, color: Colors.redAccent),
+                const SizedBox(width: 12),
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
-          const Divider(height: 24),
-          ...children,
+          const Divider(height: 1),
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: children,
+            ),
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildInfoRow(String label, String value, {Widget? trailing}) {
+  Widget _buildInfoRow(String label, String value) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
+      padding: const EdgeInsets.symmetric(vertical: 6),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -360,7 +481,7 @@ class _TechnicianTaskDetailScreenState extends State<TechnicianTaskDetailScreen>
               label,
               style: TextStyle(
                 color: Colors.grey[600],
-                fontSize: 14,
+                fontSize: 15,
               ),
             ),
           ),
@@ -368,14 +489,49 @@ class _TechnicianTaskDetailScreenState extends State<TechnicianTaskDetailScreen>
             child: Text(
               value,
               style: const TextStyle(
-                fontSize: 16,
+                fontSize: 15,
                 fontWeight: FontWeight.w500,
               ),
             ),
           ),
-          if (trailing != null) trailing,
         ],
       ),
     );
+  }
+
+  Color _getStatusColor(String status) {
+    switch (status) {
+      case 'Pending':
+        return Colors.orange;
+      case 'Confirmed':
+        return Colors.blue;
+      case 'Completed':
+        return Colors.green;
+      case 'Canceled':
+        return Colors.red;
+      default:
+        return Colors.grey;
+    }
+  }
+
+  IconData _getStatusIcon(String status) {
+    switch (status) {
+      case 'Pending':
+        return Icons.access_time;
+      case 'Confirmed':
+        return Icons.check_circle_outline;
+      case 'Completed':
+        return Icons.task_alt;
+      case 'Canceled':
+        return Icons.cancel;
+      default:
+        return Icons.info;
+    }
+  }
+
+  String _formatDateTime(DateTime dateTime) {
+    final dateFormat = DateFormat('dd/MM/yyyy');
+    final timeFormat = DateFormat('HH:mm');
+    return '${timeFormat.format(dateTime)} - ${dateFormat.format(dateTime)}';
   }
 }

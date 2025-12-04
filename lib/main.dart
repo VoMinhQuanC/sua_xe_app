@@ -1,6 +1,7 @@
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:intl/date_symbol_data_local.dart';  // ✅ Thêm import này
 import 'firebase_options.dart';  // ← File này đã được tạo tự động
 import 'screens/welcome_screen.dart';
 import 'screens/login_screen.dart';
@@ -14,6 +15,9 @@ void main() async {
   
   const storage = FlutterSecureStorage();
   await storage.delete(key: 'access_token');
+  
+  // ✅ Khởi tạo locale tiếng Việt
+  await initializeDateFormatting('vi_VN', null);
   
   // Khởi tạo Firebase
   await Firebase.initializeApp(

@@ -1,22 +1,36 @@
+// lib/screens/Technician/technician_main_page.dart
+// Main page với bottom navigation: Công việc, Lịch làm việc, Cá nhân
+
 import 'package:flutter/material.dart';
 import 'technician_home_screen.dart';
-import 'technician_profile_screen.dart';
 import 'technician_schedule_screen.dart';
+import 'technician_profile_screen.dart';
 
 class TechnicianMainPage extends StatefulWidget {
-  const TechnicianMainPage({super.key});
+  final int initialIndex; // Tab mặc định khi mở
+  
+  const TechnicianMainPage({
+    super.key,
+    this.initialIndex = 0, // Mặc định là tab "Công việc"
+  });
 
   @override
   State<TechnicianMainPage> createState() => _TechnicianMainPageState();
 }
 
 class _TechnicianMainPageState extends State<TechnicianMainPage> {
-  int _selectedIndex = 0;
+  late int _selectedIndex;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedIndex = widget.initialIndex;
+  }
 
   final List<Widget> _screens = [
-    const TechnicianHomeScreen(),
-    const TechnicianScheduleScreen(),
-    const TechnicianProfileScreen(),
+    const TechnicianHomeScreen(),      // Tab 0: Công việc
+    const TechnicianScheduleScreen(),  // Tab 1: Lịch làm việc
+    const TechnicianProfileScreen(),   // Tab 2: Cá nhân
   ];
 
   void _onItemTapped(int index) {

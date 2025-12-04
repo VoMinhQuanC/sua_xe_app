@@ -1,121 +1,58 @@
 // lib/config/api_config.dart
+// API Configuration for SuaXe App
 
-/// File cấu hình API
-/// Chỉ cần thay đổi URL ở đây, toàn bộ app sẽ cập nhật
+import 'package:flutter/foundation.dart';
+
 class ApiConfig {
-  // ============================================
-  // CẤU HÌNH CHÍNH - THAY ĐỔI Ở ĐÂY
-  // ============================================
+  // ✅ Railway Production URL
+  static const String productionUrl = 'https://suaxeweb-production.up.railway.app/api';
   
-  /// Base URL của API trên Google Cloud
-  /// Ví dụ: 
-  /// - 'https://your-project.appspot.com'
-  /// - 'https://your-backend-url.run.app'
-  /// - 'http://localhost:3000' (cho development)
-  static const String baseUrl = 'https://suaxeweb-production.up.railway.app';
+  // Local development URL (for emulator)
+  static const String localUrl = 'http://10.0.2.2:3001/api';
   
-  /// Có sử dụng /api prefix hay không
-  static const bool useApiPrefix = true;
+  // ✅ Sử dụng production URL
+  // Nếu muốn switch giữa local và production, uncomment dòng dưới:
+  // static const String baseUrl = kDebugMode ? localUrl : productionUrl;
   
-  /// Timeout cho các request (giây)
-  static const int timeoutSeconds = 30;
+  static const String baseUrl = productionUrl;  // ← Luôn dùng Railway
   
-  // ============================================
-  // ENDPOINTS - TỰ ĐỘNG TẠO TỪ BASE URL
-  // ============================================
+  // Endpoints
+  static const String loginEndpoint = '/auth/login';
+  static const String registerEndpoint = '/auth/register';
+  static const String servicesEndpoint = '/services';
+  static const String bookingEndpoint = '/booking';
   
-  static String get _apiPrefix => useApiPrefix ? '/api' : '';
+  // Mechanic endpoints
+  static const String mechanicSchedulesEndpoint = '/mechanics/schedules';
+  static const String mechanicTeamSchedulesEndpoint = '/mechanics/schedules/team';
   
-  /// Endpoint cho dịch vụ
-  static String get servicesUrl => '$baseUrl$_apiPrefix/services';
+  // Timeout settings
+  static const Duration connectionTimeout = Duration(seconds: 30);
+  static const Duration receiveTimeout = Duration(seconds: 30);
   
-  /// Endpoint cho booking
-  static String get bookingUrl => '$baseUrl$_apiPrefix/booking';
-  
-  /// Endpoint cho user
-  static String get userUrl => '$baseUrl$_apiPrefix/users';
-  
-  /// Endpoint cho mechanics
-  static String get mechanicsUrl => '$baseUrl$_apiPrefix/mechanics';
-  
-  /// Endpoint cho schedules
-  static String get schedulesUrl => '$baseUrl$_apiPrefix/schedules';
-  
-  /// Endpoint cho revenue
-  static String get revenueUrl => '$baseUrl$_apiPrefix/revenue';
-  
-  /// Endpoint cho auth
-  static String get authUrl => '$baseUrl$_apiPrefix/auth';
-  
-  /// Endpoint cho profile
-  static String get profileUrl => '$baseUrl$_apiPrefix/profile';
-  
-  /// Endpoint cho images
-  static String get imageUrl => '$baseUrl$_apiPrefix/images';
-  
-  // ============================================
-  // HELPER METHODS
-  // ============================================
-  
-  /// Lấy URL đầy đủ cho service theo ID
-  static String getServiceDetailUrl(int serviceId) {
-    return '$servicesUrl/$serviceId';
+  // Headers
+  static Map<String, String> getHeaders({String? token}) {
+    final headers = {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+    };
+    
+    if (token != null && token.isNotEmpty) {
+      headers['Authorization'] = 'Bearer $token';
+    }
+    
+    return headers;
   }
   
-  /// Lấy URL đầy đủ cho booking theo ID
-  static String getBookingDetailUrl(int bookingId) {
-    return '$bookingUrl/$bookingId';
+  // Debug: Print current config
+  static void printConfig() {
+    if (kDebugMode) {
+      print('========================================');
+      print('📡 API Configuration');
+      print('========================================');
+      print('Base URL: $baseUrl');
+      print('Environment: ${kDebugMode ? 'Development' : 'Production'}');
+      print('========================================');
+    }
   }
-  
-  /// Kiểm tra có phải đang ở môi trường development không
-  static bool get isDevelopment {
-    return baseUrl.contains('localhost') || baseUrl.contains('127.0.0.1');
-  }
-  
-  /// In ra tất cả endpoints (dùng để debug)
-  static void printAllEndpoints() {
-    print('=== API ENDPOINTS ===');
-    print('Base URL: $baseUrl');
-    print('Services: $servicesUrl');
-    print('Booking: $bookingUrl');
-    print('User: $userUrl');
-    print('Mechanics: $mechanicsUrl');
-    print('Schedules: $schedulesUrl');
-    print('Revenue: $revenueUrl');
-    print('Auth: $authUrl');
-    print('Profile: $profileUrl');
-    print('Image: $imageUrl');
-    print('Development mode: $isDevelopment');
-    print('====================');
-  }
-}
-
-// ============================================
-// CÁC CONSTANT KHÁC
-// ============================================
-
-/// Header mặc định cho các request
-class ApiHeaders {
-  static Map<String, String> get defaultHeaders => {
-    'Content-Type': 'application/json',
-    'Accept': 'application/json',
-  };
-  
-  /// Header với authentication token
-  static Map<String, String> authHeaders(String token) => {
-    ...defaultHeaders,
-    'Authorization': 'Bearer $token',
-  };
-}
-
-/// HTTP Status Codes
-class HttpStatus {
-  static const int ok = 200;
-  static const int created = 201;
-  static const int noContent = 204;
-  static const int badRequest = 400;
-  static const int unauthorized = 401;
-  static const int forbidden = 403;
-  static const int notFound = 404;
-  static const int internalServerError = 500;
 }
