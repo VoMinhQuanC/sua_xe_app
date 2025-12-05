@@ -85,21 +85,16 @@ class MechanicApiService {
     try {
       final headers = await _getHeaders();
       
-      // ✅ Tạo datetime string cho validation (ISO format)
+      // ✅ Format datetime theo backend expects (ISO format)
       final startDateTime = '${workDate}T$startTime:00';
       final endDateTime = '${workDate}T$endTime:00';
       
+      // ✅ Body theo đúng format backend mong đợi
       final body = {
-        // Dùng tên khác để validation - backend sẽ dùng cái này để check 4 tiếng
-        'validationStartTime': startDateTime,
-        'validationEndTime': endDateTime,
-        // PascalCase - cho insert DB
-        'WorkDate': workDate,
-        'StartTime': '$startTime:00',  // ✅ Thêm :00 -> HH:mm:ss
-        'EndTime': '$endTime:00',      // ✅ Thêm :00 -> HH:mm:ss
-        if (type != null) 'Type': type,
-        if (notes != null) 'notes': notes,
-        if (isAvailable != null) 'IsAvailable': isAvailable,
+        'startTime': startDateTime,  // ← LOWERCASE, ISO format
+        'endTime': endDateTime,      // ← LOWERCASE, ISO format
+        'type': type ?? 'available',
+        if (notes != null && notes.isNotEmpty) 'notes': notes,
       };
       
       print('📤 POST create schedule: $body');
@@ -153,8 +148,8 @@ class MechanicApiService {
         body['validationStartTime'] = '${workDate}T$startTime:00';
         body['validationEndTime'] = '${workDate}T$endTime:00';
         body['WorkDate'] = workDate;
-        body['StartTime'] = '$startTime:00';  // ✅ Thêm :00 -> HH:mm:ss
-        body['EndTime'] = '$endTime:00';      // ✅ Thêm :00 -> HH:mm:ss
+        body['StartTime'] = '$startTime:00';
+        body['EndTime'] = '$endTime:00';
       } else {
         if (workDate != null) body['WorkDate'] = workDate;
         if (startTime != null) body['StartTime'] = '$startTime:00';
@@ -225,6 +220,131 @@ class MechanicApiService {
     } catch (e) {
       print('❌ Lỗi khi xóa lịch: $e');
       throw Exception('Lỗi: $e');
+    }
+  }
+
+  // ============================================
+  // SCHEDULE REQUEST APIs - XIN NGHỈ / XIN SỬA
+  // ============================================
+
+  /// Xin nghỉ (cần Admin duyệt)
+  /// POST /api/mechanics/schedules/:id/request-edit
+  static Future<Map<String, dynamic>> requestLeave({
+    required int scheduleId,
+    required String reason,
+  }) async {
+    try {
+      final headers = await _getHeaders();
+      
+      // Notes format: JSON với reason
+      final notes = json.encode({
+        'type': 'leave',
+        'reason': reason,
+        'requestedAt': DateTime.now().toIso8601String(),
+      });
+
+      final body = {
+        'type': 'leave',
+        'reason': reason,
+        'notes': notes,
+      };
+
+      print('📤 POST request leave schedule $scheduleId: $body');
+
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/mechanics/schedules/$scheduleId/request-edit'),
+        headers: headers,
+        body: json.encode(body),
+      );
+
+      print('📩 Response status: ${response.statusCode}');
+      print('📩 Response body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        return {
+          'success': data['success'] ?? true,
+          'message': data['message'] ?? 'Đã gửi đơn xin nghỉ',
+        };
+      }
+
+      final errorData = json.decode(response.body);
+      return {
+        'success': false,
+        'message': errorData['message'] ?? 'Không thể gửi đơn xin nghỉ',
+      };
+    } catch (e) {
+      print('❌ Lỗi khi gửi đơn xin nghỉ: $e');
+      return {
+        'success': false,
+        'message': 'Lỗi: $e',
+      };
+    }
+  }
+
+  /// Xin sửa lịch (cần Admin duyệt)
+  /// POST /api/mechanics/schedules/:id/request-edit
+  static Future<Map<String, dynamic>> requestEditSchedule({
+    required int scheduleId,
+    required String newWorkDate,
+    required String newStartTime,
+    required String newEndTime,
+    required String reason,
+  }) async {
+    try {
+      final headers = await _getHeaders();
+      
+      // Notes format: JSON với editRequest
+      final notes = json.encode({
+        'type': 'edit',
+        'editRequest': {
+          'newWorkDate': newWorkDate,
+          'newStartTime': newStartTime,
+          'newEndTime': newEndTime,
+          'reason': reason,
+        },
+        'requestedAt': DateTime.now().toIso8601String(),
+      });
+
+      final body = {
+        'type': 'edit',
+        'newWorkDate': newWorkDate,
+        'newStartTime': newStartTime,
+        'newEndTime': newEndTime,
+        'reason': reason,
+        'notes': notes,
+      };
+
+      print('📤 POST request edit schedule $scheduleId: $body');
+
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/mechanics/schedules/$scheduleId/request-edit'),
+        headers: headers,
+        body: json.encode(body),
+      );
+
+      print('📩 Response status: ${response.statusCode}');
+      print('📩 Response body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        return {
+          'success': data['success'] ?? true,
+          'message': data['message'] ?? 'Đã gửi đơn xin sửa lịch',
+        };
+      }
+
+      final errorData = json.decode(response.body);
+      return {
+        'success': false,
+        'message': errorData['message'] ?? 'Không thể gửi đơn xin sửa lịch',
+      };
+    } catch (e) {
+      print('❌ Lỗi khi gửi đơn xin sửa lịch: $e');
+      return {
+        'success': false,
+        'message': 'Lỗi: $e',
+      };
     }
   }
 

@@ -183,7 +183,7 @@ class _TechnicianHomeScreenState extends State<TechnicianHomeScreen> {
                   label: 'Lịch làm việc',
                   color: const Color(0xFF2196F3),
                   onTap: () {
-                    Navigator.pushReplacement(
+                    Navigator.push(
                       context,
                       MaterialPageRoute(
                         builder: (context) => const TechnicianMainPage(initialIndex: 1),
@@ -328,7 +328,7 @@ class _TechnicianHomeScreenState extends State<TechnicianHomeScreen> {
               ),
               TextButton(
                 onPressed: () {
-                  Navigator.pushReplacement(
+                  Navigator.push(
                     context,
                     MaterialPageRoute(
                       builder: (context) => const TechnicianMainPage(initialIndex: 1),
@@ -374,7 +374,7 @@ class _TechnicianHomeScreenState extends State<TechnicianHomeScreen> {
                 const SizedBox(height: 8),
                 TextButton.icon(
                   onPressed: () {
-                    Navigator.pushReplacement(
+                    Navigator.push(
                       context,
                       MaterialPageRoute(
                         builder: (context) => const TechnicianMainPage(initialIndex: 1),

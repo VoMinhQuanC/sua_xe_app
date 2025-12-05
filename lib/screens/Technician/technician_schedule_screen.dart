@@ -342,10 +342,12 @@ class _TechnicianScheduleScreenState extends State<TechnicianScheduleScreen> wit
           ],
         ),
       ),
+
+      floatingActionButtonLocation: const _CustomFabLocation(),
+
       floatingActionButton: _tabController.index == 0
           ? FloatingActionButton(
               onPressed: () {
-                // TODO: Navigate to add schedule screen
                 _showAddScheduleDialog();
               },
               backgroundColor: const Color(0xFFE53935),
@@ -582,7 +584,12 @@ class _TechnicianScheduleScreenState extends State<TechnicianScheduleScreen> wit
     }
 
     return ListView.builder(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.only(
+        left: 16,
+        right: 16,
+        top: 16,
+        bottom: 80,
+      ),
       itemCount: schedules.length,
       itemBuilder: (context, index) {
         return _buildScheduleCard(schedules[index]);
@@ -710,16 +717,14 @@ class _TechnicianScheduleScreenState extends State<TechnicianScheduleScreen> wit
               children: [
                 IconButton(
                   icon: const Icon(Icons.edit, size: 20),
-                  onPressed: () {
-                    // TODO: Edit schedule
-                  },
+                  onPressed: ()  => _showEditOptionsDialog(schedule),
                 ),
-                IconButton(
-                  icon: const Icon(Icons.delete, size: 20, color: Colors.red),
-                  onPressed: () {
-                    // TODO: Delete schedule
-                  },
-                ),
+                // IconButton(
+                //   icon: const Icon(Icons.delete, size: 20, color: Colors.red),
+                //   onPressed: () {
+                //     // TODO: Delete schedule
+                //   },
+                // ),
               ],
             ),
           ],
@@ -962,20 +967,1341 @@ class _TechnicianScheduleScreenState extends State<TechnicianScheduleScreen> wit
     );
   }
 
-  /// Dialog thêm lịch
-  void _showAddScheduleDialog() {
-    showDialog(
+  // /// Parse WorkDate từ ISO string
+  // DateTime _parseWorkDate(String workDate) {
+  //   try {
+  //     if (workDate.contains('T')) {
+  //       return DateTime.parse(workDate);
+  //     }
+  //     // Format: YYYY-MM-DD
+  //     final parts = workDate.split('-');
+  //     return DateTime(
+  //       int.parse(parts[0]),
+  //       int.parse(parts[1]),
+  //       int.parse(parts[2]),
+  //     );
+  //   } catch (e) {
+  //     print('Error parsing date: $e');
+  //     return DateTime.now();
+  //   }
+  // }
+
+  /// Format time (HH:MM:SS hoặc ISO) thành HH:MM
+  String _formatTime(String? time) {
+    if (time == null || time.isEmpty) return '--:--';
+    
+    try {
+      if (time.contains('T')) {
+        // ISO format
+        final dateTime = DateTime.parse(time);
+        return '${dateTime.hour.toString().padLeft(2, '0')}:${dateTime.minute.toString().padLeft(2, '0')}';
+      } else {
+        // HH:MM:SS format
+        return time.substring(0, 5);
+      }
+    } catch (e) {
+      return time.substring(0, 5);
+    }
+  }
+
+  // ==========================================
+  // DIALOG 1: THÊM LỊCH MỚI
+  // ==========================================
+
+  /// Dialog thêm lịch mới (KHÔNG CẦN DUYỆT)
+  Future<void> _showAddScheduleDialog() async {
+    final _formKey = GlobalKey<FormState>();
+    DateTime? selectedDate;
+    TimeOfDay? startTime;
+    TimeOfDay? endTime;
+    final notesController = TextEditingController();
+
+    await showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Thêm lịch làm việc'),
-        content: const Text('Chức năng đang phát triển...'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Đóng'),
-          ),
-        ],
-      ),
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: const Text(
+                'Đăng ký lịch làm việc mới',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              content: SingleChildScrollView(
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // ===== CHỌN NGÀY =====
+                      const Text(
+                        'Ngày làm việc *',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 8),
+                      InkWell(
+                        onTap: () async {
+                          final tomorrow = DateTime.now().add(const Duration(days: 1));
+                          final maxDate = DateTime.now().add(const Duration(days: 90));
+                          
+                          final picked = await showDatePicker(
+                            context: context,
+                            initialDate: tomorrow,
+                            firstDate: tomorrow,
+                            lastDate: maxDate,
+                            locale: const Locale('vi', 'VN'),
+                          );
+                          
+                          if (picked != null) {
+                            setState(() {
+                              selectedDate = picked;
+                            });
+                          }
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+                          decoration: BoxDecoration(
+                            border: Border.all(color: Colors.grey),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.calendar_today, color: Colors.redAccent),
+                              const SizedBox(width: 12),
+                              Text(
+                                selectedDate == null
+                                    ? 'Chọn ngày'
+                                    : DateFormat('dd/MM/yyyy', 'vi_VN').format(selectedDate!),
+                                style: TextStyle(
+                                  color: selectedDate == null ? Colors.grey : Colors.black,
+                                  fontSize: 16,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      const Text(
+                        '⚠️ Chỉ có thể đăng ký trước 24 giờ',
+                        style: TextStyle(fontSize: 12, color: Colors.orange),
+                      ),
+                      const SizedBox(height: 16),
+                      
+                      // ===== CHỌN GIỜ =====
+                      Row(
+                        children: [
+                          // Giờ bắt đầu
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'Giờ bắt đầu *',
+                                  style: TextStyle(fontWeight: FontWeight.bold),
+                                ),
+                                const SizedBox(height: 8),
+                                InkWell(
+                                  onTap: () async {
+                                    final picked = await showTimePicker(
+                                      context: context,
+                                      initialTime: const TimeOfDay(hour: 8, minute: 0),
+                                    );
+                                    if (picked != null) {
+                                      setState(() {
+                                        startTime = picked;
+                                      });
+                                    }
+                                  },
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+                                    decoration: BoxDecoration(
+                                      border: Border.all(color: Colors.grey),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        const Icon(Icons.access_time, color: Colors.redAccent, size: 20),
+                                        const SizedBox(width: 8),
+                                        Text(
+                                          startTime == null
+                                              ? 'Chọn'
+                                              : startTime!.format(context),
+                                          style: TextStyle(
+                                            color: startTime == null ? Colors.grey : Colors.black,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          // Giờ kết thúc
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'Giờ kết thúc *',
+                                  style: TextStyle(fontWeight: FontWeight.bold),
+                                ),
+                                const SizedBox(height: 8),
+                                InkWell(
+                                  onTap: () async {
+                                    final picked = await showTimePicker(
+                                      context: context,
+                                      initialTime: const TimeOfDay(hour: 17, minute: 0),
+                                    );
+                                    if (picked != null) {
+                                      setState(() {
+                                        endTime = picked;
+                                      });
+                                    }
+                                  },
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+                                    decoration: BoxDecoration(
+                                      border: Border.all(color: Colors.grey),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        const Icon(Icons.access_time, color: Colors.redAccent, size: 20),
+                                        const SizedBox(width: 8),
+                                        Text(
+                                          endTime == null
+                                              ? 'Chọn'
+                                              : endTime!.format(context),
+                                          style: TextStyle(
+                                            color: endTime == null ? Colors.grey : Colors.black,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      const Text(
+                        '⏱️ Thời gian làm việc tối thiểu 4 tiếng',
+                        style: TextStyle(fontSize: 12, color: Colors.orange),
+                      ),
+                      const SizedBox(height: 16),
+                      
+                      // ===== GHI CHÚ =====
+                      const Text(
+                        'Ghi chú',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 8),
+                      TextFormField(
+                        controller: notesController,
+                        maxLines: 3,
+                        decoration: const InputDecoration(
+                          hintText: 'VD: Ca sáng, ca chiều...',
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      const Text(
+                        'ℹ️ Thông tin thêm về ca làm việc (không bắt buộc)',
+                        style: TextStyle(fontSize: 12, color: Colors.grey),
+                      ),
+                      const SizedBox(height: 16),
+                      
+                      // ===== CHÚ THÍCH QUAN TRỌNG =====
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.blue.shade50,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.blue.shade200),
+                        ),
+                        child: const Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              '📋 Lưu ý:',
+                              style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blue),
+                            ),
+                            SizedBox(height: 8),
+                            Text(
+                              '• Lịch phải cách nhau tối thiểu 4 tiếng',
+                              style: TextStyle(fontSize: 13),
+                            ),
+                            SizedBox(height: 4),
+                            Text(
+                              '• Tối đa 6 kỹ thuật viên/ngày',
+                              style: TextStyle(fontSize: 13),
+                            ),
+                            SizedBox(height: 4),
+                            Text(
+                              '• Lịch sẽ hiển thị ngay sau khi lưu',
+                              style: TextStyle(fontSize: 13),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Hủy'),
+                ),
+                ElevatedButton(
+                  onPressed: () async {
+                    // Validate
+                    if (selectedDate == null) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Vui lòng chọn ngày')),
+                      );
+                      return;
+                    }
+                    
+                    if (startTime == null || endTime == null) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Vui lòng chọn giờ bắt đầu và kết thúc')),
+                      );
+                      return;
+                    }
+                    
+                    // Validate 4 hours minimum
+                    final startMinutes = startTime!.hour * 60 + startTime!.minute;
+                    final endMinutes = endTime!.hour * 60 + endTime!.minute;
+                    final diffHours = (endMinutes - startMinutes) / 60;
+                    
+                    if (diffHours < 4) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Thời gian làm việc tối thiểu phải 4 tiếng'),
+                          backgroundColor: Colors.red,
+                        ),
+                      );
+                      return;
+                    }
+                    
+                    // Call API
+                    Navigator.pop(context);
+                    await _addSchedule(
+                      selectedDate!,
+                      startTime!,
+                      endTime!,
+                      notesController.text,
+                    );
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.redAccent,
+                  ),
+                  child: const Text('Lưu lịch', style: TextStyle(color: Colors.white)),
+                ),
+              ],
+            );
+          },
+        );
+      },
     );
+  }
+
+  /// Call API thêm lịch
+  Future<void> _addSchedule(
+    DateTime date,
+    TimeOfDay startTime,
+    TimeOfDay endTime,
+    String notes,
+  ) async {
+    try {
+      // Show loading
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const Center(child: CircularProgressIndicator()),
+      );
+      
+      // Format data
+      final workDate = MechanicApiService.formatDate(date);
+      final startTimeStr = '${startTime.hour.toString().padLeft(2, '0')}:${startTime.minute.toString().padLeft(2, '0')}';
+      final endTimeStr = '${endTime.hour.toString().padLeft(2, '0')}:${endTime.minute.toString().padLeft(2, '0')}';
+      
+      // Call API
+      final response = await MechanicApiService.createSchedule(
+        workDate: workDate,
+        startTime: startTimeStr,
+        endTime: endTimeStr,
+        notes: notes.isNotEmpty ? notes : null,
+        type: 'available',
+        isAvailable: 1,
+      );
+      
+      // Close loading
+      if (mounted) Navigator.pop(context);
+      
+      if (response['success'] == true) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Đăng ký lịch làm việc thành công!'),
+              backgroundColor: Colors.green,
+            ),
+          );
+          
+          // Reload data
+          await _loadSchedules();
+        }
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(response['message'] ?? 'Có lỗi xảy ra'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      // Close loading
+      if (mounted) Navigator.pop(context);
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Lỗi: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  // ==========================================
+  // DIALOG 2: CHỌN HÀNH ĐỘNG (XIN NGHỈ / XIN SỬA)
+  // ==========================================
+
+  /// Dialog chọn hành động khi click "Sửa"
+  Future<void> _showEditOptionsDialog(MechanicScheduleModel schedule) async {
+    await showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text(
+            'Chọn hành động',
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Thông tin lịch
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade100,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.grey.shade300),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(Icons.calendar_today, size: 16, color: Colors.redAccent),
+                        const SizedBox(width: 8),
+                        Text(
+                          DateFormat('dd/MM/yyyy', 'vi_VN').format(_parseWorkDate(schedule.workDate)),
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        const Icon(Icons.access_time, size: 16, color: Colors.redAccent),
+                        const SizedBox(width: 8),
+                        Text(
+                          '${_formatTime(schedule.startTime)} - ${_formatTime(schedule.endTime)}',
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 20),
+              
+              // Option 1: Xin nghỉ
+              InkWell(
+                onTap: () {
+                  Navigator.pop(context);
+                  _showLeaveRequestDialog(schedule);
+                },
+                child: Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.orange.shade50,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.orange.shade200, width: 2),
+                  ),
+                  child: const Row(
+                    children: [
+                      Icon(Icons.event_busy, color: Colors.orange, size: 32),
+                      SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              '🏖️ Xin nghỉ',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.orange,
+                              ),
+                            ),
+                            SizedBox(height: 4),
+                            Text(
+                              'Có việc bận, không thể làm việc',
+                              style: TextStyle(fontSize: 13, color: Colors.black87),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Icon(Icons.arrow_forward_ios, color: Colors.orange),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              
+              // Option 2: Xin sửa lịch
+              InkWell(
+                onTap: () {
+                  Navigator.pop(context);
+                  _showEditRequestDialog(schedule);
+                },
+                child: Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.shade50,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.blue.shade200, width: 2),
+                  ),
+                  child: const Row(
+                    children: [
+                      Icon(Icons.edit_calendar, color: Colors.blue, size: 32),
+                      SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              '✏️ Xin sửa lịch',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.blue,
+                              ),
+                            ),
+                            SizedBox(height: 4),
+                            Text(
+                              'Đổi sang ngày/giờ khác',
+                              style: TextStyle(fontSize: 13, color: Colors.black87),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Icon(Icons.arrow_forward_ios, color: Colors.blue),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Đóng'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  // ==========================================
+  // DIALOG 3: XIN NGHỈ
+  // ==========================================
+
+  /// Dialog xin nghỉ
+  Future<void> _showLeaveRequestDialog(MechanicScheduleModel schedule) async {
+    final reasonController = TextEditingController();
+
+    await showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          backgroundColor: Colors.white,
+          title: Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.orange.shade100,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: const Row(
+              children: [
+                Icon(Icons.event_busy, color: Colors.orange, size: 28),
+                SizedBox(width: 12),
+                Text(
+                  'Đăng ký xin nghỉ',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.orange,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Thông tin lịch đang xin nghỉ
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade100,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.grey.shade300),
+                  ),
+                  child: Column(
+                    children: [
+                      Row(
+                        children: [
+                          const Icon(Icons.calendar_today, color: Colors.redAccent, size: 20),
+                          const SizedBox(width: 12),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'Ngày làm việc',
+                                style: TextStyle(fontSize: 12, color: Colors.grey),
+                              ),
+                              Text(
+                                DateFormat('EEEE, dd/MM/yyyy', 'vi_VN')
+                                    .format(_parseWorkDate(schedule.workDate)),
+                                style: const TextStyle(fontWeight: FontWeight.bold),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          const Icon(Icons.access_time, color: Colors.redAccent, size: 20),
+                          const SizedBox(width: 12),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'Ca làm việc',
+                                style: TextStyle(fontSize: 12, color: Colors.grey),
+                              ),
+                              Text(
+                                '${_formatTime(schedule.startTime)} - ${_formatTime(schedule.endTime)}',
+                                style: const TextStyle(fontWeight: FontWeight.bold),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+                
+                // Alert thông báo
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.shade50,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.blue.shade200),
+                  ),
+                  child: const Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(Icons.info, color: Colors.blue, size: 20),
+                      SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Bạn đã đăng ký lịch này rồi.',
+                              style: TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                            SizedBox(height: 4),
+                            Text(
+                              'Nếu có việc bận đột xuất, vui lòng điền lý do bên dưới để xin nghỉ.',
+                              style: TextStyle(fontSize: 13),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+                
+                // Checkbox xác nhận (visual only)
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.amber.shade50,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.amber.shade200),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.check_circle, color: Colors.amber.shade700, size: 24),
+                      const SizedBox(width: 12),
+                      const Expanded(
+                        child: Text(
+                          'Đăng ký nghỉ (có việc bận, không thể làm việc)',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black87,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 4),
+                const Text(
+                  '⚠️ Admin sẽ nhận được thông báo về đơn xin nghỉ của bạn',
+                  style: TextStyle(fontSize: 12, color: Colors.grey),
+                ),
+                const SizedBox(height: 16),
+                
+                // Lý do xin nghỉ
+                const Text(
+                  'Lý do xin nghỉ *',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: reasonController,
+                  maxLines: 4,
+                  decoration: InputDecoration(
+                    hintText: 'VD: Có việc gia đình, khám bệnh, bận đột xuất...',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: BorderSide(color: Colors.orange.shade200),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: const BorderSide(color: Colors.orange, width: 2),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 4),
+                const Text(
+                  '❗ Vui lòng ghi rõ lý do để Admin dễ dàng xét duyệt',
+                  style: TextStyle(fontSize: 12, color: Colors.red),
+                ),
+                const SizedBox(height: 16),
+                
+                // Trạng thái sau khi gửi
+                const Text(
+                  'Trạng thái sau khi gửi',
+                  style: TextStyle(fontSize: 12, color: Colors.grey),
+                ),
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.orange,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.hourglass_empty, color: Colors.white, size: 16),
+                      SizedBox(width: 8),
+                      Text(
+                        'CHỜ DUYỆT',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Đóng'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                if (reasonController.text.trim().isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Vui lòng nhập lý do xin nghỉ'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                  return;
+                }
+                
+                Navigator.pop(context);
+                await _submitLeaveRequest(schedule.scheduleId!, reasonController.text.trim());
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.orange,
+              ),
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.send, size: 18, color: Colors.white),
+                  SizedBox(width: 8),
+                  Text('Gửi đơn xin nghỉ', style: TextStyle(color: Colors.white)),
+                ],
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  /// Submit leave request
+  Future<void> _submitLeaveRequest(int scheduleId, String reason) async {
+    try {
+      // Show loading
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const Center(child: CircularProgressIndicator()),
+      );
+      
+      final response = await MechanicApiService.requestLeave(
+        scheduleId: scheduleId,
+        reason: reason,
+      );
+      
+      // Close loading
+      if (mounted) Navigator.pop(context);
+      
+      if (response['success'] == true) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Đã gửi đơn xin nghỉ! Chờ Admin duyệt.'),
+              backgroundColor: Colors.green,
+            ),
+          );
+          
+          // Reload
+          await _loadSchedules();
+        }
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(response['message'] ?? 'Có lỗi xảy ra'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) Navigator.pop(context);
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Lỗi: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  // ==========================================
+  // DIALOG 4: XIN SỬA LỊCH
+  // ==========================================
+
+  /// Dialog xin sửa lịch
+  Future<void> _showEditRequestDialog(MechanicScheduleModel schedule) async {
+    DateTime? newDate;
+    TimeOfDay? newStartTime;
+    TimeOfDay? newEndTime;
+    final reasonController = TextEditingController();
+
+    await showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              backgroundColor: Colors.white,
+              title: Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.blue.shade100,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Row(
+                  children: [
+                    Icon(Icons.edit_calendar, color: Colors.blue, size: 28),
+                    SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        'Xin sửa lịch làm việc',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.blue,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // So sánh lịch cũ vs mới
+                    Row(
+                      children: [
+                        // Lịch hiện tại
+                        Expanded(
+                          child: Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Colors.grey.shade100,
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: Colors.grey.shade300),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'Lịch hiện tại',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.grey,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  DateFormat('dd/MM/yyyy', 'vi_VN')
+                                      .format(_parseWorkDate(schedule.workDate)),
+                                  style: const TextStyle(fontWeight: FontWeight.bold),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  '${_formatTime(schedule.startTime)} - ${_formatTime(schedule.endTime)}',
+                                  style: const TextStyle(fontSize: 13),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        // Arrow
+                        const Icon(Icons.arrow_forward, color: Colors.blue, size: 24),
+                        const SizedBox(width: 12),
+                        // Lịch mới
+                        Expanded(
+                          child: Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Colors.blue.shade50,
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: Colors.blue.shade200, width: 2),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'Lịch muốn đổi',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.blue,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                InkWell(
+                                  onTap: () async {
+                                    final picked = await showDatePicker(
+                                      context: context,
+                                      initialDate: _parseWorkDate(schedule.workDate),
+                                      firstDate: DateTime.now().add(const Duration(days: 2)),
+                                      lastDate: DateTime.now().add(const Duration(days: 90)),
+                                      locale: const Locale('vi', 'VN'),
+                                    );
+                                    if (picked != null) {
+                                      setState(() {
+                                        newDate = picked;
+                                      });
+                                    }
+                                  },
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
+                                    decoration: BoxDecoration(
+                                      border: Border.all(color: Colors.blue.shade300),
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        const Icon(Icons.calendar_today, size: 14, color: Colors.blue),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          newDate == null
+                                              ? 'Chọn ngày'
+                                              : DateFormat('dd/MM/yy').format(newDate!),
+                                          style: const TextStyle(fontSize: 12),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: InkWell(
+                                        onTap: () async {
+                                          final picked = await showTimePicker(
+                                            context: context,
+                                            initialTime: const TimeOfDay(hour: 8, minute: 0),
+                                          );
+                                          if (picked != null) {
+                                            setState(() {
+                                              newStartTime = picked;
+                                            });
+                                          }
+                                        },
+                                        child: Container(
+                                          padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
+                                          decoration: BoxDecoration(
+                                            border: Border.all(color: Colors.blue.shade300),
+                                            borderRadius: BorderRadius.circular(4),
+                                          ),
+                                          child: Text(
+                                            newStartTime?.format(context) ?? '08:00',
+                                            style: const TextStyle(fontSize: 11),
+                                            textAlign: TextAlign.center,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 4),
+                                    const Text('-', style: TextStyle(fontSize: 12)),
+                                    const SizedBox(width: 4),
+                                    Expanded(
+                                      child: InkWell(
+                                        onTap: () async {
+                                          final picked = await showTimePicker(
+                                            context: context,
+                                            initialTime: const TimeOfDay(hour: 17, minute: 0),
+                                          );
+                                          if (picked != null) {
+                                            setState(() {
+                                              newEndTime = picked;
+                                            });
+                                          }
+                                        },
+                                        child: Container(
+                                          padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
+                                          decoration: BoxDecoration(
+                                            border: Border.all(color: Colors.blue.shade300),
+                                            borderRadius: BorderRadius.circular(4),
+                                          ),
+                                          child: Text(
+                                            newEndTime?.format(context) ?? '17:00',
+                                            style: const TextStyle(fontSize: 11),
+                                            textAlign: TextAlign.center,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    
+                    // Alert thông báo
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.blue.shade50,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.blue.shade200),
+                      ),
+                      child: const Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Icon(Icons.info, color: Colors.blue, size: 20),
+                          SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Bạn muốn thay đổi lịch làm việc?',
+                                  style: TextStyle(fontWeight: FontWeight.bold),
+                                ),
+                                SizedBox(height: 4),
+                                Text(
+                                  'Vui lòng điền thông tin mới và lý do để Admin xét duyệt.',
+                                  style: TextStyle(fontSize: 13),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    
+                    // Lưu ý quan trọng
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.amber.shade50,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.amber.shade200),
+                      ),
+                      child: const Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(Icons.warning, color: Colors.orange, size: 20),
+                              SizedBox(width: 8),
+                              Text(
+                                'Lưu ý:',
+                                style: TextStyle(fontWeight: FontWeight.bold),
+                              ),
+                            ],
+                          ),
+                          SizedBox(height: 8),
+                          Text('• Chỉ có thể xin sửa lịch trước 2 ngày', style: TextStyle(fontSize: 12)),
+                          SizedBox(height: 4),
+                          Text('• Lịch đã có khách đặt không thể sửa', style: TextStyle(fontSize: 12)),
+                          SizedBox(height: 4),
+                          Text('• Đơn xin sửa cần Admin duyệt', style: TextStyle(fontSize: 12)),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    
+                    // Lý do xin sửa
+                    const Text(
+                      'Lý do xin sửa lịch *',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 8),
+                    TextField(
+                      controller: reasonController,
+                      maxLines: 3,
+                      decoration: InputDecoration(
+                        hintText: 'VD: Đổi ca để đi học, có việc gia đình vào ngày cũ...',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: BorderSide(color: Colors.blue.shade200),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: const BorderSide(color: Colors.blue, width: 2),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    const Text(
+                      'ℹ️ Ghi rõ lý do để Admin dễ dàng xét duyệt',
+                      style: TextStyle(fontSize: 12, color: Colors.blue),
+                    ),
+                    const SizedBox(height: 16),
+                    
+                    // Trạng thái sau khi gửi
+                    const Text(
+                      'Trạng thái sau khi gửi',
+                      style: TextStyle(fontSize: 12, color: Colors.grey),
+                    ),
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: Colors.blue,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.hourglass_empty, color: Colors.white, size: 16),
+                          SizedBox(width: 8),
+                          Text(
+                            'CHỜ DUYỆT',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Đóng'),
+                ),
+                ElevatedButton(
+                  onPressed: () async {
+                    if (newDate == null) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Vui lòng chọn ngày mới')),
+                      );
+                      return;
+                    }
+                    
+                    if (reasonController.text.trim().isEmpty) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Vui lòng nhập lý do')),
+                      );
+                      return;
+                    }
+                    
+                    Navigator.pop(context);
+                    await _submitEditRequest(
+                      schedule.scheduleId!,
+                      newDate!,
+                      newStartTime ?? const TimeOfDay(hour: 8, minute: 0),
+                      newEndTime ?? const TimeOfDay(hour: 17, minute: 0),
+                      reasonController.text.trim(),
+                    );
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blue,
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.send, size: 18, color: Colors.white),
+                      SizedBox(width: 8),
+                      Text('Gửi đơn xin sửa', style: TextStyle(color: Colors.white)),
+                    ],
+                  ),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  /// Submit edit request
+  Future<void> _submitEditRequest(
+    int scheduleId,
+    DateTime newDate,
+    TimeOfDay newStartTime,
+    TimeOfDay newEndTime,
+    String reason,
+  ) async {
+    try {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const Center(child: CircularProgressIndicator()),
+      );
+      
+      final response = await MechanicApiService.requestEditSchedule(
+        scheduleId: scheduleId,
+        newWorkDate: DateFormat('yyyy-MM-dd').format(newDate),
+        newStartTime: '${newStartTime.hour.toString().padLeft(2, '0')}:${newStartTime.minute.toString().padLeft(2, '0')}',
+        newEndTime: '${newEndTime.hour.toString().padLeft(2, '0')}:${newEndTime.minute.toString().padLeft(2, '0')}',
+        reason: reason,
+      );
+      
+      if (mounted) Navigator.pop(context);
+      
+      if (response['success'] == true) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Đã gửi đơn xin sửa lịch! Chờ Admin duyệt.'),
+              backgroundColor: Colors.green,
+            ),
+          );
+          
+          await _loadSchedules();
+        }
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(response['message'] ?? 'Có lỗi xảy ra'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) Navigator.pop(context);
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Lỗi: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+}
+/// Custom FAB location - Di chuyển lên cao
+class _CustomFabLocation extends FloatingActionButtonLocation {
+  const _CustomFabLocation();
+  
+  @override
+  Offset getOffset(ScaffoldPrelayoutGeometry scaffoldGeometry) {
+    final double fabX = scaffoldGeometry.scaffoldSize.width - 72.0;
+    final double fabY = scaffoldGeometry.scaffoldSize.height - 150.0;  // ← Điều chỉnh số này
+    return Offset(fabX, fabY);
   }
 }

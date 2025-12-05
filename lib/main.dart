@@ -1,8 +1,9 @@
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:intl/date_symbol_data_local.dart';  // ✅ Thêm import này
-import 'firebase_options.dart';  // ← File này đã được tạo tự động
+import 'package:intl/date_symbol_data_local.dart';
+import 'firebase_options.dart';
 import 'screens/welcome_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/User/user_home_screen.dart';
@@ -34,13 +35,28 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
+      
       theme: ThemeData(
         primarySwatch: Colors.red,
         scaffoldBackgroundColor: Colors.white,
       ),
+      
+      // ✅ LOCALIZATION CONFIG (FIX DATEPICKER)
+      localizationsDelegates: const [
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      supportedLocales: const [
+        Locale('vi', 'VN'), // Tiếng Việt
+        Locale('en', 'US'), // English
+      ],
+      locale: const Locale('vi', 'VN'),
+      
       routes: {
         '/login': (context) => const LoginScreen(),
       },
+      
       home: const WelcomeScreen(),
     );
   }
