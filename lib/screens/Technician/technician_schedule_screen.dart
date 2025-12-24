@@ -128,7 +128,7 @@ class _TechnicianScheduleScreenState extends State<TechnicianScheduleScreen> wit
       print('📅 Loading team schedules: $startDateStr → $endDateStr');
       
       final response = await http.get(
-        Uri.parse('${ApiConfig.baseUrl}/mechanics/schedules/team/by-date-range/$startDateStr/$endDateStr'),
+        Uri.parse('${ApiConfig.baseUrl}/api/mechanics/schedules/team/by-date-range/$startDateStr/$endDateStr'),
         headers: {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',
@@ -563,27 +563,41 @@ class _TechnicianScheduleScreenState extends State<TechnicianScheduleScreen> wit
     }).toList();
 
     if (schedules.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.event_busy, size: 64, color: Colors.grey[400]),
-            const SizedBox(height: 16),
-            Text(
-              'Không có lịch làm việc',
-              style: TextStyle(fontSize: 16, color: Colors.grey[600]),
+      // ✅ FIXED: Wrap with SingleChildScrollView for pull-to-refresh
+      return SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        child: SizedBox(
+          height: MediaQuery.of(context).size.height - 300,
+          child: Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.event_busy, size: 64, color: Colors.grey[400]),
+                const SizedBox(height: 16),
+                Text(
+                  'Không có lịch làm việc',
+                  style: TextStyle(fontSize: 16, color: Colors.grey[600]),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  DateFormat('EEEE, dd/MM/yyyy', 'vi_VN').format(_selectedDate),
+                  style: TextStyle(fontSize: 14, color: Colors.grey[500]),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  '👆 Kéo xuống để tải lại',
+                  style: TextStyle(fontSize: 12, color: Colors.grey[400]),
+                ),
+              ],
             ),
-            const SizedBox(height: 8),
-            Text(
-              DateFormat('EEEE, dd/MM/yyyy', 'vi_VN').format(_selectedDate),
-              style: TextStyle(fontSize: 14, color: Colors.grey[500]),
-            ),
-          ],
+          ),
         ),
       );
     }
 
+    // ✅ FIXED: Add physics for smoother pull-to-refresh
     return ListView.builder(
+      physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.only(
         left: 16,
         right: 16,
@@ -692,24 +706,89 @@ class _TechnicianScheduleScreenState extends State<TechnicianScheduleScreen> wit
             ],
             // Status badge
             const SizedBox(height: 12),
-            Container(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 12,
-                vertical: 6,
-              ),
-              decoration: BoxDecoration(
-                color: statusColor.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: statusColor),
-              ),
-              child: Text(
-                schedule.statusInVietnamese,
-                style: TextStyle(
-                  color: statusColor,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 12,
+            // Enhanced status badges
+            Row(
+              children: [
+                // Main status badge
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: statusColor.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: statusColor),
+                  ),
+                  child: Text(
+                    schedule.statusInVietnamese,
+                    style: TextStyle(
+                      color: statusColor,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                    ),
+                  ),
                 ),
-              ),
+                // Additional badge for ApprovedLeave/ApprovedEdit
+                if (schedule.status == 'ApprovedLeave') ...[
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.orange.withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: Colors.orange, width: 1.5),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: const [
+                        Icon(Icons.event_busy, size: 14, color: Colors.orange),
+                        SizedBox(width: 4),
+                        Text(
+                          'Đã nghỉ',
+                          style: TextStyle(
+                            color: Colors.orange,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 11,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+                if (schedule.status == 'ApprovedEdit') ...[
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.blue.withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: Colors.blue, width: 1.5),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: const [
+                        Icon(Icons.edit_calendar, size: 14, color: Colors.blue),
+                        SizedBox(width: 4),
+                        Text(
+                          'Đã sửa lịch',
+                          style: TextStyle(
+                            color: Colors.blue,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 11,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ],
             ),
             // Actions
             Row(
@@ -777,17 +856,29 @@ class _TechnicianScheduleScreenState extends State<TechnicianScheduleScreen> wit
   /// Weekly timeline list (lịch nhóm)
   Widget _buildWeeklyTimelineList() {
     if (_teamSchedules.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.people_outline, size: 64, color: Colors.grey[400]),
-            const SizedBox(height: 16),
-            Text(
-              'Không có lịch nhóm trong tuần này',
-              style: TextStyle(fontSize: 16, color: Colors.grey[600]),
+      // ✅ FIXED: Wrap with SingleChildScrollView for pull-to-refresh
+      return SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        child: SizedBox(
+          height: MediaQuery.of(context).size.height - 300,
+          child: Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.people_outline, size: 64, color: Colors.grey[400]),
+                const SizedBox(height: 16),
+                Text(
+                  'Không có lịch nhóm trong tuần này',
+                  style: TextStyle(fontSize: 16, color: Colors.grey[600]),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  '👆 Kéo xuống để tải lại',
+                  style: TextStyle(fontSize: 12, color: Colors.grey[400]),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       );
     }
@@ -795,7 +886,9 @@ class _TechnicianScheduleScreenState extends State<TechnicianScheduleScreen> wit
     final weekStart = _getWeekStart(_selectedDate);
     final weekDays = List.generate(7, (i) => weekStart.add(Duration(days: i)));
 
+    // ✅ FIXED: Add physics for smoother pull-to-refresh
     return ListView.builder(
+      physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.all(16),
       itemCount: weekDays.length,
       itemBuilder: (context, index) {
@@ -1770,7 +1863,13 @@ class _TechnicianScheduleScreenState extends State<TechnicianScheduleScreen> wit
                 }
                 
                 Navigator.pop(context);
-                await _submitLeaveRequest(schedule.scheduleId!, reasonController.text.trim());
+                await _submitLeaveRequest(
+                  schedule.scheduleId!,
+                  schedule.workDate,      // ← THÊM: Ngày hiện tại
+                  schedule.startTime,     // ← THÊM: Giờ bắt đầu hiện tại
+                  schedule.endTime,       // ← THÊM: Giờ kết thúc hiện tại
+                  reasonController.text.trim(),
+                );
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.orange,
@@ -1791,7 +1890,13 @@ class _TechnicianScheduleScreenState extends State<TechnicianScheduleScreen> wit
   }
 
   /// Submit leave request
-  Future<void> _submitLeaveRequest(int scheduleId, String reason) async {
+  Future<void> _submitLeaveRequest(
+    int scheduleId,
+    String workDate,     // ← THÊM
+    String startTime,    // ← THÊM
+    String endTime,      // ← THÊM
+    String reason,
+  ) async {
     try {
       // Show loading
       showDialog(
@@ -1802,6 +1907,9 @@ class _TechnicianScheduleScreenState extends State<TechnicianScheduleScreen> wit
       
       final response = await MechanicApiService.requestLeave(
         scheduleId: scheduleId,
+        workDate: workDate,      // ← THÊM
+        startTime: startTime,    // ← THÊM
+        endTime: endTime,        // ← THÊM
         reason: reason,
       );
       

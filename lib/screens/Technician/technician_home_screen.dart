@@ -1,10 +1,15 @@
 // lib/screens/Technician/technician_home_screen.dart
+// ✅ FIXED: Integrated MechanicNotificationBell
 
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:suaxe_app/screens/Technician/techician_appointment_screen.dart';
 import 'package:suaxe_app/screens/Technician/technician_schedule_screen.dart';
 import 'package:suaxe_app/screens/Technician/technician_main_page.dart';
+import 'package:suaxe_app/screens/attendance_home_screen.dart';
+import 'package:suaxe_app/screens/attendance_history_screen.dart';
+// ✅ THÊM IMPORT NOTIFICATION BELL
+import 'package:suaxe_app/widgets/mechanic_notification_bell.dart';
 
 class TechnicianHomeScreen extends StatefulWidget {
   const TechnicianHomeScreen({super.key});
@@ -19,7 +24,7 @@ class _TechnicianHomeScreenState extends State<TechnicianHomeScreen> {
     return Scaffold(
       backgroundColor: Colors.grey[100],
       appBar: AppBar(
-        backgroundColor: const Color(0xFFE53935), // Màu đỏ giống HUTECH
+        backgroundColor: const Color(0xFFE53935),
         elevation: 0,
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -43,12 +48,9 @@ class _TechnicianHomeScreenState extends State<TechnicianHomeScreen> {
           ],
         ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.notifications_outlined, color: Colors.white),
-            onPressed: () {
-              // TODO: Navigate to notifications
-            },
-          ),
+          // ✅ THAY THẾ IconButton BẰNG MechanicNotificationBell WIDGET
+          const MechanicNotificationBell(),
+          const SizedBox(width: 8),
         ],
       ),
       body: RefreshIndicator(
@@ -199,11 +201,10 @@ class _TechnicianHomeScreenState extends State<TechnicianHomeScreen> {
                   label: 'Chấm công',
                   color: const Color(0xFF4CAF50),
                   onTap: () {
-                    // TODO: Navigate to QR attendance screen
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Tính năng đang phát triển'),
-                        duration: Duration(seconds: 2),
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const AttendanceHomeScreen(),
                       ),
                     );
                   },
@@ -220,11 +221,10 @@ class _TechnicianHomeScreenState extends State<TechnicianHomeScreen> {
                   label: 'Lịch sử',
                   color: const Color(0xFFFF9800),
                   onTap: () {
-                    // TODO: Navigate to attendance history
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Tính năng đang phát triển'),
-                        duration: Duration(seconds: 2),
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const AttendanceHistoryScreen(),
                       ),
                     );
                   },
@@ -237,7 +237,6 @@ class _TechnicianHomeScreenState extends State<TechnicianHomeScreen> {
                   label: 'Lịch hẹn',
                   color: const Color(0xFF9C27B0),
                   onTap: () {
-                    // Navigate to schedule (đơn xin nghỉ/sửa lịch)
                     Navigator.push(
                       context,
                       MaterialPageRoute(

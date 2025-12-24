@@ -4,6 +4,9 @@ import 'package:suaxe_app/screens/User/booking/user_booking_screen.dart';
 import 'package:suaxe_app/screens/User/profile/edit_profile_screen.dart';
 import 'package:suaxe_app/services/auth_service.dart';
 import 'package:suaxe_app/screens/User/vehicles/my_vehicle_screen.dart';
+import '../../widgets/notification_bell.dart';
+// ✅ THÊM IMPORT HELP SCREEN
+import 'package:suaxe_app/screens/User/user_help_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -18,6 +21,9 @@ class ProfileScreen extends StatelessWidget {
         ),
         backgroundColor: Colors.redAccent,
         automaticallyImplyLeading: false,
+        actions: [
+          const NotificationBell(),
+        ],
       ),
       body: FutureBuilder<Map<String, dynamic>?>(
         future: AuthService.getUserInfo(),
@@ -52,7 +58,7 @@ class ProfileScreen extends StatelessWidget {
                         radius: 50,
                         backgroundColor: Colors.white,
                         backgroundImage: avatarUrl != null && avatarUrl.isNotEmpty
-                            ? NetworkImage('https://suaxeweb-production.up.railway.app/$avatarUrl') // ← URL backend
+                            ? NetworkImage('https://suaxeweb-production.up.railway.app/$avatarUrl')
                             : null,
                         child: avatarUrl == null || avatarUrl.isEmpty
                             ? const Icon(
@@ -158,15 +164,16 @@ class ProfileScreen extends StatelessWidget {
                   },
                 ),
                 
+                // ✅ THAY ĐỔI: Navigate đến UserHelpScreen thay vì snackbar
                 _buildMenuTile(
                   context,
                   icon: Icons.help_outline,
                   title: 'Trợ giúp',
                   onTap: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Tính năng đang phát triển'),
-                        duration: Duration(seconds: 1),
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const UserHelpScreen(),
                       ),
                     );
                   },

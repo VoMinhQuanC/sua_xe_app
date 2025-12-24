@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../widgets/notification_bell.dart';
 
 class NewsScreen extends StatelessWidget {
   const NewsScreen({super.key});
@@ -52,6 +53,9 @@ class NewsScreen extends StatelessWidget {
           style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
         ),
         centerTitle: true,
+        actions: [
+          const NotificationBell(),
+        ],
       ),
       body: SafeArea(
         child: SingleChildScrollView(

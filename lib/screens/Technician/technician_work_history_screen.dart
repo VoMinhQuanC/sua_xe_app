@@ -1,7 +1,9 @@
 // lib/screens/Technician/technician_work_history_screen.dart
+// ✅ FIXED: Format services, add pull-to-refresh, better UI
 
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'dart:convert';
 import 'package:suaxe_app/models/booking_model.dart';
 import 'package:suaxe_app/services/api/mechanic_api_service.dart';
 import 'technician_task_detail_screen.dart';
@@ -68,6 +70,34 @@ class _TechnicianWorkHistoryScreenState extends State<TechnicianWorkHistoryScree
       }).toList();
     }
     // 'Tất cả' không cần filter
+  }
+
+  /// ✅ NEW: Parse services JSON string
+  List<Map<String, dynamic>> _parseServices(String? servicesJson) {
+    if (servicesJson == null || servicesJson.isEmpty) {
+      return [];
+    }
+
+    try {
+      // Try to parse as JSON array
+      final parsed = json.decode(servicesJson);
+      if (parsed is List) {
+        return parsed.cast<Map<String, dynamic>>();
+      }
+      return [];
+    } catch (e) {
+      print('❌ Error parsing services: $e');
+      return [];
+    }
+  }
+
+  /// ✅ NEW: Format price to VND
+  String _formatPrice(dynamic price) {
+    if (price == null) return '0đ';
+    
+    final priceValue = price is String ? double.tryParse(price) ?? 0 : price.toDouble();
+    final formatter = NumberFormat('#,###', 'vi_VN');
+    return '${formatter.format(priceValue)}đ';
   }
 
   @override
@@ -145,22 +175,37 @@ class _TechnicianWorkHistoryScreenState extends State<TechnicianWorkHistoryScree
             child: _isLoading
                 ? const Center(child: CircularProgressIndicator())
                 : _completedWorks.isEmpty
-                    ? Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.history, size: 64, color: Colors.grey[400]),
-                            const SizedBox(height: 16),
-                            Text(
-                              'Chưa có lịch sử công việc',
-                              style: TextStyle(color: Colors.grey[600], fontSize: 16),
+                    ? RefreshIndicator(
+                        onRefresh: _loadWorkHistory,
+                        child: SingleChildScrollView(
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          child: SizedBox(
+                            height: MediaQuery.of(context).size.height - 400,
+                            child: Center(
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(Icons.history, size: 64, color: Colors.grey[400]),
+                                  const SizedBox(height: 16),
+                                  Text(
+                                    'Chưa có lịch sử công việc',
+                                    style: TextStyle(color: Colors.grey[600], fontSize: 16),
+                                  ),
+                                  const SizedBox(height: 16),
+                                  Text(
+                                    '👆 Kéo xuống để tải lại',
+                                    style: TextStyle(fontSize: 12, color: Colors.grey[400]),
+                                  ),
+                                ],
+                              ),
                             ),
-                          ],
+                          ),
                         ),
                       )
                     : RefreshIndicator(
                         onRefresh: _loadWorkHistory,
                         child: ListView.builder(
+                          physics: const AlwaysScrollableScrollPhysics(),
                           padding: const EdgeInsets.all(16),
                           itemCount: _completedWorks.length,
                           itemBuilder: (context, index) {
@@ -218,13 +263,15 @@ class _TechnicianWorkHistoryScreenState extends State<TechnicianWorkHistoryScree
   }
 
   Widget _buildHistoryCard(BookingModel work) {
+    // ✅ Parse services
+    final services = _parseServices(work.services);
+    
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: InkWell(
         onTap: () {
-          // ✅ FIX: Truyền appointmentId thay vì task object
           Navigator.push(
             context,
             MaterialPageRoute(
@@ -240,6 +287,7 @@ class _TechnicianWorkHistoryScreenState extends State<TechnicianWorkHistoryScree
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // Header: Tên khách + Status
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -259,7 +307,7 @@ class _TechnicianWorkHistoryScreenState extends State<TechnicianWorkHistoryScree
                           _formatDate(work.appointmentDate),
                           style: TextStyle(
                             color: Colors.grey[600],
-                            fontSize: 14,
+                            fontSize: 13,
                           ),
                         ),
                       ],
@@ -282,44 +330,106 @@ class _TechnicianWorkHistoryScreenState extends State<TechnicianWorkHistoryScree
                   ),
                 ],
               ),
-              const Divider(height: 24),
-              Row(
-                children: [
-                  Icon(Icons.build_circle_outlined, size: 16, color: Colors.grey[600]),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      work.services ?? 'Không có dịch vụ',
-                      style: const TextStyle(fontWeight: FontWeight.w600),
+              
+              const Divider(height: 20),
+              
+              // ✅ FIXED: Services list formatted
+              if (services.isNotEmpty) ...[
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(Icons.build_circle_outlined, size: 18, color: Colors.grey[600]),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Dịch vụ đã thực hiện:',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 14,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          ...services.map((service) {
+                            final name = service['ServiceName'] ?? 'Không rõ';
+                            final price = service['Price'];
+                            final quantity = service['Quantity'] ?? 1;
+                            
+                            return Padding(
+                              padding: const EdgeInsets.only(bottom: 4),
+                              child: Row(
+                                children: [
+                                  Container(
+                                    width: 4,
+                                    height: 4,
+                                    decoration: BoxDecoration(
+                                      color: Colors.grey[400],
+                                      shape: BoxShape.circle,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      '$name${quantity > 1 ? " x$quantity" : ""}',
+                                      style: const TextStyle(fontSize: 13),
+                                    ),
+                                  ),
+                                  Text(
+                                    _formatPrice(price),
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.green[700],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          }).toList(),
+                        ],
+                      ),
                     ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
+                  ],
+                ),
+                const SizedBox(height: 12),
+              ],
+              
+              // Vehicle info
               Row(
                 children: [
-                  Icon(Icons.two_wheeler, size: 16, color: Colors.grey[600]),
+                  Icon(Icons.two_wheeler, size: 18, color: Colors.grey[600]),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       '${work.brand ?? ''} ${work.model ?? ''} - ${work.licensePlate ?? ''}',
-                      style: TextStyle(color: Colors.grey[700], fontSize: 14),
+                      style: TextStyle(color: Colors.grey[700], fontSize: 13),
                     ),
                   ),
                 ],
               ),
-              // Đánh giá (nếu có)
+              
+              // Rating
               const SizedBox(height: 8),
               Row(
                 children: [
                   Icon(Icons.star, size: 16, color: Colors.amber),
                   const SizedBox(width: 4),
                   Text(
-                    '5.0', // Mock rating, có thể lấy từ MechanicReviews nếu cần
+                    '5.0',
                     style: TextStyle(
                       color: Colors.grey[700],
-                      fontSize: 14,
+                      fontSize: 13,
                       fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    '• Khách hàng hài lòng',
+                    style: TextStyle(
+                      color: Colors.grey[500],
+                      fontSize: 12,
                     ),
                   ),
                 ],

@@ -1,5 +1,5 @@
-// lib/screens/Technician/technician_edit_profile_screen.dart
-// Edit profile screen động - Load và update qua API
+// lib/screens/Technician/techician_profile/technician_edit_profile_screen.dart
+// Edit profile screen động - Load và update qua API - ALL ENDPOINTS FIXED
 
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -53,16 +53,16 @@ class _TechnicianEditProfileScreenState extends State<TechnicianEditProfileScree
         return;
       }
 
-      // Call API lấy profile
+      // ✅ FIXED: Đúng endpoint /api/profile/profile
       final response = await http.get(
-        Uri.parse('${ApiConfig.baseUrl}/users/profile'),
+        Uri.parse('${ApiConfig.baseUrl}/api/profile/profile'),
         headers: {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',
         },
       );
 
-      print('📋 Profile response: ${response.statusCode}');
+      print('📋 Edit screen - Profile response: ${response.statusCode}');
       
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
@@ -107,9 +107,9 @@ class _TechnicianEditProfileScreenState extends State<TechnicianEditProfileScree
         return;
       }
 
-      // Call API update profile
+      // ✅ FIXED: Đúng endpoint /api/profile/profile (PUT method)
       final response = await http.put(
-        Uri.parse('${ApiConfig.baseUrl}/users/profile'),
+        Uri.parse('${ApiConfig.baseUrl}/api/profile/profile'),
         headers: {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',
@@ -164,9 +164,9 @@ class _TechnicianEditProfileScreenState extends State<TechnicianEditProfileScree
         return;
       }
 
-      // Call API change password
+      // ✅ FIXED: Thêm /api prefix
       final response = await http.post(
-        Uri.parse('${ApiConfig.baseUrl}/users/change-password'),
+        Uri.parse('${ApiConfig.baseUrl}/api/users/change-password'),
         headers: {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',
@@ -242,8 +242,8 @@ class _TechnicianEditProfileScreenState extends State<TechnicianEditProfileScree
                       'Lưu',
                       style: TextStyle(
                         color: Colors.white,
-                        fontWeight: FontWeight.bold,
                         fontSize: 16,
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
             ),

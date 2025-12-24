@@ -231,25 +231,27 @@ class MechanicApiService {
   /// POST /api/mechanics/schedules/:id/request-edit
   static Future<Map<String, dynamic>> requestLeave({
     required int scheduleId,
+    required String workDate,
+    required String startTime,
+    required String endTime,
     required String reason,
   }) async {
     try {
       final headers = await _getHeaders();
       
-      // Notes format: JSON với reason
-      final notes = json.encode({
-        'type': 'leave',
-        'reason': reason,
-        'requestedAt': DateTime.now().toIso8601String(),
-      });
-
       final body = {
-        'type': 'leave',
+        'type': 'leave',            // ✅ THÊM: Để backend biết đây là xin nghỉ
+        'newWorkDate': workDate,
+        'newStartTime': startTime,
+        'newEndTime': endTime,
         'reason': reason,
-        'notes': notes,
       };
 
-      print('📤 POST request leave schedule $scheduleId: $body');
+      print('📤 POST request LEAVE schedule $scheduleId');
+      print('   🏷️  Type: leave');
+      print('   📅 WorkDate: $workDate');
+      print('   ⏰ Time: $startTime - $endTime');
+      print('   📝 Reason: $reason');
 
       final response = await http.post(
         Uri.parse('$baseUrl/api/mechanics/schedules/$scheduleId/request-edit'),
@@ -294,28 +296,19 @@ class MechanicApiService {
     try {
       final headers = await _getHeaders();
       
-      // Notes format: JSON với editRequest
-      final notes = json.encode({
-        'type': 'edit',
-        'editRequest': {
-          'newWorkDate': newWorkDate,
-          'newStartTime': newStartTime,
-          'newEndTime': newEndTime,
-          'reason': reason,
-        },
-        'requestedAt': DateTime.now().toIso8601String(),
-      });
-
       final body = {
-        'type': 'edit',
+        'type': 'edit',             // ✅ THÊM: Để backend biết đây là xin sửa
         'newWorkDate': newWorkDate,
         'newStartTime': newStartTime,
         'newEndTime': newEndTime,
         'reason': reason,
-        'notes': notes,
       };
 
-      print('📤 POST request edit schedule $scheduleId: $body');
+      print('📤 POST request EDIT schedule $scheduleId');
+      print('   🏷️  Type: edit');
+      print('   📅 New Date: $newWorkDate');
+      print('   ⏰ New Time: $newStartTime - $newEndTime');
+      print('   📝 Reason: $reason');
 
       final response = await http.post(
         Uri.parse('$baseUrl/api/mechanics/schedules/$scheduleId/request-edit'),

@@ -5,10 +5,10 @@ import 'package:flutter/foundation.dart';
 
 class ApiConfig {
   // ✅ Railway Production URL
-  static const String productionUrl = 'https://suaxeweb-production.up.railway.app/api';
+  static const String productionUrl = 'https://suaxeweb-production.up.railway.app'; // Bỏ api
   
   // Local development URL (for emulator)
-  static const String localUrl = 'http://10.0.2.2:3001/api';
+  static const String localUrl = 'http://10.0.2.2:3001'; // Bỏ api
   
   // ✅ Sử dụng production URL
   // Nếu muốn switch giữa local và production, uncomment dòng dưới:

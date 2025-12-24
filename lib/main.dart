@@ -10,6 +10,7 @@ import 'screens/User/user_home_screen.dart';
 import 'screens/User/user_profile_screen.dart';
 import 'screens/User/user_service_screen.dart';
 import 'screens/User/user_news_screen.dart';
+import 'services/notification_service.dart'; // ← THÊM
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -24,6 +25,14 @@ void main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+  
+  // ✅ THÊM: Initialize notification service
+  try {
+    await NotificationService().initialize();
+    print('✅ Notification service initialized');
+  } catch (e) {
+    print('❌ Error initializing notifications: $e');
+  }
   
   runApp(const MyApp());
 }

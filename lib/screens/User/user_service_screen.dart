@@ -5,6 +5,7 @@ import 'package:dio/dio.dart';
 import '../../services/api/api_service.dart';
 import 'package:suaxe_app/screens/User/booking/user_booking_screen.dart';
 import 'package:suaxe_app/services/auth_service.dart';
+import '../../widgets/notification_bell.dart';
 
 
 class UserServiceScreen extends StatefulWidget {
@@ -137,18 +138,18 @@ class _UserServiceScreenState extends State<UserServiceScreen> {
         backgroundColor: Colors.redAccent,
         elevation: 0,
         actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh, color: Colors.white),
-            onPressed: fetchServices,
-            tooltip: 'Làm mới',
-          ),
+          const NotificationBell(),
         ],
       ),
-      body: Column(
-        children: [
-          _buildSearchBar(),
-          Expanded(child: _buildBody()),
-        ],
+      body: RefreshIndicator(
+        onRefresh: fetchServices,
+        color: Colors.redAccent,
+        child: Column(
+          children: [
+            _buildSearchBar(),
+            Expanded(child: _buildBody()),
+          ],
+        ),
       ),
     );
   }
@@ -221,92 +222,100 @@ class _UserServiceScreenState extends State<UserServiceScreen> {
   }
 
   Widget _buildErrorState() {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.error_outline, size: 64, color: Colors.red),
-            const SizedBox(height: 16),
-            Text(
-              errorMessage,
-              textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 16, color: Colors.grey),
-            ),
-            const SizedBox(height: 24),
-            ElevatedButton.icon(
-              onPressed: fetchServices,
-              icon: const Icon(Icons.refresh),
-              label: const Text('Thử lại'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.redAccent,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 24,
-                  vertical: 12,
+    return SingleChildScrollView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      child: SizedBox(
+        height: MediaQuery.of(context).size.height * 0.6,
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(32),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.error_outline, size: 64, color: Colors.red),
+                const SizedBox(height: 16),
+                Text(
+                  errorMessage,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 16, color: Colors.grey),
                 ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+                const SizedBox(height: 24),
+                ElevatedButton.icon(
+                  onPressed: fetchServices,
+                  icon: const Icon(Icons.refresh),
+                  label: const Text('Thử lại'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.redAccent,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 12,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
                 ),
-              ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );
   }
 
   Widget _buildEmptyState() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            _searchController.text.isNotEmpty 
-                ? Icons.search_off 
-                : Icons.inbox_outlined,
-            size: 64,
-            color: Colors.grey,
+    return SingleChildScrollView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      child: SizedBox(
+        height: MediaQuery.of(context).size.height * 0.6,
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                _searchController.text.isNotEmpty 
+                    ? Icons.search_off 
+                    : Icons.inbox_outlined,
+                size: 64,
+                color: Colors.grey,
+              ),
+              const SizedBox(height: 16),
+              Text(
+                _searchController.text.isNotEmpty
+                    ? 'Không tìm thấy dịch vụ phù hợp'
+                    : 'Chưa có dịch vụ nào',
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.grey,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                _searchController.text.isNotEmpty
+                    ? 'Thử tìm với từ khóa khác'
+                    : 'Vui lòng quay lại sau',
+                style: const TextStyle(fontSize: 14, color: Colors.grey),
+              ),
+            ],
           ),
-          const SizedBox(height: 16),
-          Text(
-            _searchController.text.isNotEmpty
-                ? 'Không tìm thấy dịch vụ phù hợp'
-                : 'Chưa có dịch vụ nào',
-            style: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: Colors.grey,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            _searchController.text.isNotEmpty
-                ? 'Thử tìm với từ khóa khác'
-                : 'Vui lòng quay lại sau',
-            style: const TextStyle(fontSize: 14, color: Colors.grey),
-          ),
-        ],
+        ),
       ),
     );
   }
 
   Widget _buildServiceList() {
-    return RefreshIndicator(
-      color: Colors.redAccent,
-      onRefresh: fetchServices,
-      child: ListView.builder(
-        padding: const EdgeInsets.all(16),
-        itemCount: filteredServices.length,
-        itemBuilder: (context, index) {
-          final service = filteredServices[index];
-          return _ServiceCard(
-            service: service,
-            formatPrice: formatPrice,
-          );
-        },
-      ),
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: filteredServices.length,
+      itemBuilder: (context, index) {
+        final service = filteredServices[index];
+        return _ServiceCard(
+          service: service,
+          formatPrice: formatPrice,
+        );
+      },
     );
   }
 }

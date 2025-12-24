@@ -26,7 +26,7 @@ class ProfileApiService {
       }
 
       final response = await http.put(
-        Uri.parse('$baseUrl/api/users/profile'),
+        Uri.parse('$baseUrl/api/profile/profile'),  // ✅ FIXED: /api/profile/profile
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
@@ -69,7 +69,7 @@ class ProfileApiService {
       }
 
       final response = await http.get(
-        Uri.parse('$baseUrl/api/users/profile'),
+        Uri.parse('$baseUrl/api/profile/profile'),  // ✅ FIXED: /api/profile/profile
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',

@@ -9,6 +9,7 @@ import 'register_screen.dart';
 import '../services/api/api_service.dart';
 import '../services/google_sign_in_service.dart';
 import '../services/auth_service.dart';
+import '../services/notification_service.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -152,6 +153,9 @@ class _LoginScreenState extends State<LoginScreen> {
             await AuthService.debugPrintUserInfo();
           }
           
+          // Gửi FCM token lên server sau khi login
+          await NotificationService().sendFCMTokenWithAuth(token.toString());
+          
           // ✅ FIX: Navigate dựa theo role
           if (!mounted) return;
           await _navigateBasedOnRole();
@@ -291,7 +295,12 @@ class _LoginScreenState extends State<LoginScreen> {
         // Lưu thông tin đăng nhập nếu checkbox được chọn
         await _saveCredentials();
         await Future.delayed(const Duration(milliseconds: 500));
+
+        // THÊM DELAY để đảm bảo token đã lưu
+        await Future.delayed(const Duration(milliseconds: 200));
         
+        // Gửi FCM token lên server sau khi login
+        await NotificationService().sendFCMTokenWithAuth(token.toString());
         // ✅ FIX: Navigate dựa theo role
         await _navigateBasedOnRole();
         return;

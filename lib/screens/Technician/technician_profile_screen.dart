@@ -70,7 +70,7 @@ class _TechnicianProfileScreenState extends State<TechnicianProfileScreen> {
   /// Fetch profile info
   Future<void> _fetchProfile(String token) async {
     final response = await http.get(
-      Uri.parse('${ApiConfig.baseUrl}/users/profile'),
+      Uri.parse('${ApiConfig.baseUrl}/api/profile/profile'),  // ✅ FIXED: /api/profile/profile
       headers: {
         'Authorization': 'Bearer $token',
         'Content-Type': 'application/json',
@@ -78,6 +78,7 @@ class _TechnicianProfileScreenState extends State<TechnicianProfileScreen> {
     );
 
     print('📋 Profile response: ${response.statusCode}');
+    print('📋 Response body: ${response.body}');
     
     if (response.statusCode == 200) {
       final data = json.decode(response.body);
@@ -100,38 +101,53 @@ class _TechnicianProfileScreenState extends State<TechnicianProfileScreen> {
 
   /// Fetch stats
   Future<void> _fetchStats(String token) async {
-    final response = await http.get(
-      Uri.parse('${ApiConfig.baseUrl}/users/stats'),
-      headers: {
-        'Authorization': 'Bearer $token',
-        'Content-Type': 'application/json',
-      },
-    );
+    try {
+      final response = await http.get(
+        Uri.parse('${ApiConfig.baseUrl}/api/profile/stats'),  // ✅ FIXED: /api/profile/stats
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      );
 
-    print('📊 Stats response: ${response.statusCode}');
-    
-    if (response.statusCode == 200) {
-      final data = json.decode(response.body);
-      if (data['success']) {
-        final stats = data['stats'];
-        
+      print('📊 Stats response: ${response.statusCode}');
+      
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['success']) {
+          final stats = data['stats'];
+          
+          setState(() {
+            _totalJobs = stats['totalJobs'] ?? 0;
+            _completedJobs = stats['completedJobs'] ?? 0;
+            _rating = (stats['rating'] ?? 0.0).toDouble();
+          });
+          
+          print('✅ Stats loaded: Total=$_totalJobs, Completed=$_completedJobs');
+        }
+      } else if (response.statusCode == 403) {
+        // ⚠️ JWT token thiếu role hoặc không phải mechanic
+        print('⚠️ 403: JWT token không có role=3, sử dụng mock stats');
         setState(() {
-          _totalJobs = stats['totalJobs'] ?? 0;
-          _completedJobs = stats['completedJobs'] ?? 0;
-          _rating = (stats['rating'] ?? 0.0).toDouble();
+          _totalJobs = 0;
+          _completedJobs = 0;
+          _rating = 0.0;
         });
-        
-        print('✅ Stats loaded: Total=$_totalJobs, Completed=$_completedJobs');
+      } else {
+        print('⚠️ Stats error ${response.statusCode}, using defaults');
+        setState(() {
+          _totalJobs = 0;
+          _completedJobs = 0;
+          _rating = 0.0;
+        });
       }
-    } else if (response.statusCode == 403) {
-      // Không phải mechanic, dùng mock data
+    } catch (e) {
+      print('⚠️ Stats error: $e, using defaults');
       setState(() {
         _totalJobs = 0;
         _completedJobs = 0;
         _rating = 0.0;
       });
-    } else {
-      throw Exception('HTTP ${response.statusCode}');
     }
   }
 

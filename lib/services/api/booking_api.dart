@@ -90,7 +90,7 @@ class BookingApiService {
       
       final headers = await _getHeaders();
       final response = await http.get(
-        Uri.parse('$baseUrl/api/users/vehicles/user'), // Bỏ /$userId
+        Uri.parse('$baseUrl/api/vehicles/user/$userId'),
         headers: headers,
       );
 
@@ -126,7 +126,7 @@ class BookingApiService {
       
       final headers = await _getHeaders();
       final response = await http.post(
-        Uri.parse('$baseUrl/api/users/vehicles'),
+        Uri.parse('$baseUrl/api/vehicles'),
         headers: headers,
         body: json.encode(request.toJson()),
       );
@@ -162,7 +162,7 @@ class BookingApiService {
 
   static Future<void> deleteVehicle(int vehicleId) async {
     final response = await http.delete(
-      Uri.parse('$baseUrl/api/users/vehicles/$vehicleId'),
+      Uri.parse('$baseUrl/api/vehicles/$vehicleId'),
       headers: await _getHeaders(),
     );
     if (response.statusCode != 200) throw Exception('Cannot delete');

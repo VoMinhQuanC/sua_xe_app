@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 class BookingModel {
   final int? appointmentId;
   final int? userId;
@@ -19,7 +21,7 @@ class BookingModel {
   final String? model;
   final int? year;
   final String? mechanicName;
-  final String? services; // Danh sách dịch vụ cách nhau bởi dấu phẩy
+  final String? services; // JSON string của services
   
   // Danh sách chi tiết dịch vụ
   final List<BookingServiceDetail>? serviceDetails;
@@ -48,6 +50,37 @@ class BookingModel {
   });
 
   factory BookingModel.fromJson(Map<String, dynamic> json) {
+    // ✅ FIXED: Parse Services correctly
+    String? servicesString;
+    List<BookingServiceDetail>? serviceDetailsList;
+    
+    // Check if Services is a List (from backend)
+    if (json['Services'] is List) {
+      final servicesList = json['Services'] as List;
+      
+      // Convert to JSON string for storage
+      servicesString = jsonEncode(servicesList);
+      
+      // Also create serviceDetails list
+      serviceDetailsList = servicesList
+          .map((e) => BookingServiceDetail.fromJson(e as Map<String, dynamic>))
+          .toList();
+    } 
+    // Check lowercase services
+    else if (json['services'] is List) {
+      final servicesList = json['services'] as List;
+      servicesString = jsonEncode(servicesList);
+      serviceDetailsList = servicesList
+          .map((e) => BookingServiceDetail.fromJson(e as Map<String, dynamic>))
+          .toList();
+    }
+    // If already a string
+    else if (json['Services'] is String) {
+      servicesString = json['Services'] as String;
+    } else if (json['services'] is String) {
+      servicesString = json['services'] as String;
+    }
+    
     return BookingModel(
       appointmentId: json['AppointmentID'] ?? json['appointmentId'],
       userId: json['UserID'] ?? json['userId'],
@@ -63,24 +96,20 @@ class BookingModel {
               ? DateTime.parse(json['estimatedEndTime'])
               : null,
       isDeleted: json['IsDeleted'] == 1 || json['isDeleted'] == true,
-      fullName: json['FullName'] ?? json['fullName'],
+      fullName: json['FullName'] ?? json['fullName'] ?? json['CustomerName'],
       email: json['Email'] ?? json['email'],
-      phoneNumber: json['PhoneNumber'] ?? json['phoneNumber'],
+      phoneNumber: json['PhoneNumber'] ?? json['phoneNumber'] ?? json['CustomerPhone'],
       licensePlate: json['LicensePlate'] ?? json['licensePlate'],
       brand: json['Brand'] ?? json['brand'],
       model: json['Model'] ?? json['model'],
       year: json['Year'] ?? json['year'],
       mechanicName: json['MechanicName'] ?? json['mechanicName'],
-      services: json['Services'] is List
-        ? (json['Services'] as List).join(', ')
-        : json['services'] is List
-            ? (json['services'] as List).join(', ')
-            : json['Services'] ?? json['services'],
-      serviceDetails: json['serviceDetails'] != null
+      services: servicesString,
+      serviceDetails: serviceDetailsList ?? (json['serviceDetails'] != null
           ? (json['serviceDetails'] as List)
               .map((e) => BookingServiceDetail.fromJson(e))
               .toList()
-          : null,
+          : null),
     );
   }
 
@@ -187,6 +216,7 @@ class CreateBookingRequest {
   final DateTime appointmentDate;
   final String? notes;
   final List<int> serviceIds;
+  final String paymentMethod;
 
   CreateBookingRequest({
     required this.userId,
@@ -198,6 +228,7 @@ class CreateBookingRequest {
     required this.appointmentDate,
     this.notes,
     required this.serviceIds,
+    this.paymentMethod = 'Thanh toán tại tiệm',
   });
 
   Map<String, dynamic> toJson() {
@@ -211,6 +242,7 @@ class CreateBookingRequest {
       'appointmentDate': appointmentDate.toIso8601String(),
       'notes': notes,
       'serviceIds': serviceIds,
+      'paymentMethod': paymentMethod,
     };
   }
 }

@@ -7,6 +7,7 @@ import 'package:suaxe_app/models/service_model.dart';
 import 'package:suaxe_app/models/mechanic_model.dart';
 import 'package:suaxe_app/models/time_slot_model.dart';
 import 'package:suaxe_app/services/api/schedule_api.dart';
+import 'package:suaxe_app/screens/User/payment_screen.dart';
 
 class UserBookingScreen extends StatefulWidget {
   final int userId;
@@ -43,7 +44,7 @@ class _UserBookingScreenState extends State<UserBookingScreen> {
   final _notesController = TextEditingController();
 
   // Step 5: Thanh toán
-  String _paymentMethod = 'cash';
+  String _paymentMethod = 'Thanh toán tại tiệm';
 
   @override
   void initState() {
@@ -718,7 +719,7 @@ class _UserBookingScreenState extends State<UserBookingScreen> {
         
         Card(
           child: RadioListTile<String>(
-            value: 'cash',
+            value: 'Thanh toán tại tiệm',
             groupValue: _paymentMethod,
             onChanged: (value) {
               setState(() => _paymentMethod = value!);
@@ -733,7 +734,7 @@ class _UserBookingScreenState extends State<UserBookingScreen> {
         
         Card(
           child: RadioListTile<String>(
-            value: 'transfer',
+            value: 'Chuyển khoản ngân hàng',
             groupValue: _paymentMethod,
             onChanged: (value) {
               setState(() => _paymentMethod = value!);
@@ -1013,6 +1014,7 @@ class _UserBookingScreenState extends State<UserBookingScreen> {
         appointmentDate: appointmentDate,
         notes: _notesController.text.isNotEmpty ? _notesController.text : null,
         serviceIds: _selectedServiceIds,
+        paymentMethod: _paymentMethod, // e.g., 'Thanh toán tại tiệm' or 'Chuyển khoản ngân hàng'
       );
 
       final result = await BookingApiService.createAppointment(request);
@@ -1020,7 +1022,19 @@ class _UserBookingScreenState extends State<UserBookingScreen> {
       if (!mounted) return;
       
       // Hiển thị dialog thành công
-      _showSuccessBookingDialog(result);
+      if (_paymentMethod == 'Chuyển khoản ngân hàng') {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => PaymentScreen(
+              appointmentId: result.appointmentId!,
+              bookingCode: 'BK${result.appointmentId}',
+            ),
+          ),
+        );
+      } else {
+        _showSuccessBookingDialog(result);
+      }
       
     } catch (e) {
       _showErrorDialog('Lỗi khi đặt lịch: $e');
